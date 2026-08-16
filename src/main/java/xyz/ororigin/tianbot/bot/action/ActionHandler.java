@@ -223,7 +223,7 @@ public class ActionHandler {
     }
 
 
-    private void doStopCurrent() {
+    void doStopCurrent() {
         List<TickContainer> toCancel = new ArrayList<>();
         for (TickContainer tc : tickLinkList) {
             if (!tc.action().isBlocking()) {
