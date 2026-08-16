@@ -223,3 +223,34 @@ src/main/java/xyz/ororigin/tianbot/
 - **Folia 调度**：假人 tick 用实体调度器 `getScheduler().runAtFixedRate(...)`，自动跟随跨区块；区块操作走 Moonrise 区块任务调度器
 - 插件无 `paper-plugin.yml`，仅 `plugin.yml`（`folia-supported: true`，`load: STARTUP`）
 - 未自定义 Bukkit 事件：外部插件可监听假人生命周期触发的标准 `PlayerJoinEvent` / `PlayerQuitEvent`
+
+## 开源协议
+
+本项目使用 [MIT License](LICENSE) 开源。
+
+```
+MIT License
+
+Copyright (c) 2026 OR_origin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+
+由于咱比较忙（其实是懒），可能不会经常维护或者更新这个项目。所以这个项目可以被随意fork，有需要可以自己改然后二次分发~
