@@ -1,0 +1,13 @@
+name: Tianbot-core
+version: '${version}'
+main: xyz.ororigin.tianbot.TianBotPlugin
+api-version: '26.2'
+folia-supported: true
+load: STARTUP
+author: OR_origin
+description: carpet的假人功能在folia服务端上的插件移植
+
+permissions:
+  tianbot.admin:
+    description: TianBot 直接假人召唤管理权限
+    default: op

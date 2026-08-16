@@ -1,0 +1,20 @@
+# FoliaBot 配置
+database:
+  # SQLite 数据库文件名（位于 plugins/FoliaBot/ 目录下）
+  file: bots.db
+
+# AuthMe 兼容：假人上线时强制跳过 AuthMe 登录/注册流程（仅在AuthMe存在时生效）
+authme:
+  # 是否启用 AuthMe 兼容（假人上线自动跳过 AuthMe 登录）
+  enabled: true
+  # 未注册的假人是否自动注册并登录
+  auto-register: true
+  # 自动注册使用的密码（auto-register 开启时生效）
+  password: "TianBot_AutoRegister"
+
+# script 模式（动作序列循环执行）
+script:
+  # 单个 tick 内连续执行的即时动作上限。
+  # SequenceAction 展开序列时，若连续即时动作累计超过该值，会强制插入一个 WaitAction(1) 分割，
+  # 保证循环让出区域线程（terminate 可达、不卡死区块线程）。默认 128。
+  max-burst-per-tick: 128
