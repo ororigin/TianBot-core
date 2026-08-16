@@ -75,6 +75,19 @@ public interface TianBotApi {
     /** 返回当前在线假人集合（只读视图）。 */
     Collection<BotHandle> getBots();
 
+    // ==================== 脚本（script 模式） ====================
+
+    /**
+     * 解析并运行一段 JSON 脚本文本（动作序列，支持循环重放）。
+     *
+     * <p>脚本文本格式与 {@link BotHandle#runScript(String)} 一致（见其 Javadoc）。</p>
+     *
+     * @param name 假人名字
+     * @param json 脚本文本（JSON）
+     * @return 动作入队完成的 future；假人不存在时以异常完成
+     */
+    CompletableFuture<Void> runScript(String name, String json);
+
     // ==================== 自定义属性 ====================
 
     /**

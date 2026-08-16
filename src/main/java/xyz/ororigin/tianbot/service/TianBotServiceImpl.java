@@ -77,6 +77,13 @@ public class TianBotServiceImpl implements TianBotApi {
     }
 
     @Override
+    public CompletableFuture<Void> runScript(String name, String json) {
+        Bot bot = BotManager.getBot(name).orElseThrow(
+                () -> new IllegalStateException(Lang.t("error.bot-not-found", "player", name)));
+        return bot.runScript(json);
+    }
+
+    @Override
     public CompletableFuture<Void> shutdownAll() {
         BotManager.shutDown();
         return CompletableFuture.completedFuture(null);

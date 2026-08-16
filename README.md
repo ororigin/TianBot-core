@@ -47,3 +47,30 @@ gradlew.bat deploy       # 构建并复制到测试服 d:\minecraft\server\26.2\
 主类 `xyz.ororigin.tianbot.FoliaBotPlugin`，调度器示例 `scheduler.xyz.ororigin.tianbot.FoliaSchedulerExamples`。
 
 游戏内：`/foliabot test`（演示全部调度器）/ `/foliabot info`
+
+## script 模式（动作脚本）
+
+`/tianbotadmin <假人> script <JSON>` 可为假人运行一段 JSON 动作脚本（循环重放）。
+JSON 非法时回显解析失败；`/tianbotadmin <假人> stop` 可随时停止。
+
+示例（假人跳一下、前进 20 tick、停下，重复 3 轮）：
+
+```json
+{"loops":3,"steps":[{"action":"jump"},{"action":"move","dir":"forward"},{"action":"wait","ticks":20},{"action":"move","dir":"stop"}]}
+```
+
+支持的动作：`attack`/`use`/`jump`/`swapHands`/`drop`/`dropStack`/`wait`/`move`/`look`/`turn`/
+`sneak`/`unsneak`/`sprint`/`unsprint`/`mount`/`dismount`/`say`/`stopCurrent`；
+`loops` 为 `-1` 时无限循环。
+
+### API
+
+```java
+// 服务层：按名字运行脚本
+TianBotApi api = Bukkit.getServicesManager().load(TianBotApi.class);
+api.runScript("bot1", "{\"loops\":2,\"steps\":[{\"action\":\"jump\"}]}");
+
+// 单假人句柄
+BotHandle bot = api.getBot("bot1").orElseThrow();
+bot.runScript("{\"steps\":[{\"action\":\"say\",\"message\":\"hi\"}]}");
+```

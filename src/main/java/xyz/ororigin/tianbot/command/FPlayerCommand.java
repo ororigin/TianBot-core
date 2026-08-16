@@ -17,6 +17,7 @@ import org.bukkit.command.CommandSender;
 import xyz.ororigin.tianbot.TianBotPlugin;
 import xyz.ororigin.tianbot.bot.Bot;
 import xyz.ororigin.tianbot.bot.BotManager;
+import xyz.ororigin.tianbot.bot.action.script.ScriptParseException;
 import xyz.ororigin.tianbot.data.DatabaseManager;
 import xyz.ororigin.tianbot.utils.Lang;
 
@@ -67,7 +68,10 @@ public final class FPlayerCommand {
                         .then(Commands.literal("spawn").executes(FPlayerCommand::spawn))
                         .then(Commands.literal("chat")
                                 .then(Commands.argument("message", StringArgumentType.greedyString())
-                                        .executes(FPlayerCommand::chat))));
+                                        .executes(FPlayerCommand::chat)))
+                        .then(Commands.literal("script")
+                                .then(Commands.argument("script", StringArgumentType.greedyString())
+                                        .executes(FPlayerCommand::script))));
         commands.register(root.build(), Lang.get("command.description"), List.of());
     }
     /** 切换假人 ghost（隐藏）模式：ghostmode true → 隐藏（ghost）；false → 可见。 */
@@ -115,6 +119,23 @@ public final class FPlayerCommand {
         String content = StringArgumentType.getString(context, "message");
         respond(bot.say(content, sender), sender,
                 Lang.t("command.chat.output", "player", bot.name(), "message", content));
+        return 1;
+    }
+
+    /** 解析并运行一段 JSON 脚本文本（script 模式）。非法 JSON 同步回显解析失败。 */
+    private static int script(CommandContext<CommandSourceStack> context) {
+        Bot bot = resolveBot(context);
+        if (bot == null) {
+            return 0;
+        }
+        CommandSender sender = context.getSource().getSender();
+        String json = StringArgumentType.getString(context, "script");
+        try {
+            respond(bot.runScript(json), sender,
+                    Lang.t("command.script.started", "player", bot.name()));
+        } catch (ScriptParseException e) {
+            failure(sender, Lang.t("command.script.parse-failed", "reason", e.getMessage()));
+        }
         return 1;
     }
 

@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import xyz.ororigin.tianbot.TianBotPlugin;
 import xyz.ororigin.tianbot.api.BotHandle;
 import xyz.ororigin.tianbot.bot.action.ActionHandler;
+import xyz.ororigin.tianbot.bot.action.script.ScriptParser;
 import xyz.ororigin.tianbot.bot.action.module.AttackAction;
 import xyz.ororigin.tianbot.bot.action.module.ChatAction;
 import xyz.ororigin.tianbot.bot.action.module.DismountAction;
@@ -713,6 +714,11 @@ public class Bot implements BotHandle {
                 return feedbackTo;
             }
         };
+    }
+
+    @Override
+    public CompletableFuture<Void> runScript(String json) {
+        return ScriptParser.parseAndRun(actions, json);
     }
 
     /**假人下线方法**/

@@ -190,6 +190,35 @@ public interface BotHandle {
      */
     CompletableFuture<Void> say(String content, @Nullable CommandSender feedbackTo);
 
+    // ==================== 脚本（script 模式） ====================
+
+    /**
+     * 解析并运行一段 JSON 脚本文本（动作序列，支持循环重放）。
+     *
+     * <p>脚本格式（与 {@code ScriptParser} 一致）：
+     * <pre>{@code
+     * {
+     *   "loops": 3,                          // 循环次数，-1 表示无限循环
+     *   "steps": [
+     *     { "action": "attack", "mode": "once" },   // mode: once / continuous / interval(需 ticks)
+     *     { "action": "wait", "ticks": 20 },
+     *     { "action": "move", "dir": "forward" },
+     *     { "action": "look", "target": "north" },
+     *     { "action": "say", "message": "hi" }
+     *   ]
+     * }
+     * }</pre>
+     * 支持的动作：attack/use/jump/swapHands/drop/dropStack/wait/move/look/turn/
+     * sneak/unsneak/sprint/unsprint/mount/dismount/say/stopCurrent。</p>
+     *
+     * <p>JSON 非法或步骤不合法时同步抛出 {@link java.lang.RuntimeException}（{@code ScriptParseException}）；
+     * 解析成功后，动作在假人所在区域线程排队执行，返回的 future 在动作入队后完成。</p>
+     *
+     * @param json 脚本文本（JSON）
+     * @return 动作入队完成的 future
+     */
+    CompletableFuture<Void> runScript(String json);
+
     // ==================== 其他 ====================
 
     /** 终止该假人的所有行为（等价于旧的 {@code actions.terminate()}）。 */

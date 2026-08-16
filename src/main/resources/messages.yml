@@ -20,6 +20,9 @@ command:
     failed: "假人 {player} 生成失败: {reason}"
   chat:
     output: "已让 {player} 输出: {message}"
+  script:
+    started: "已为 {player} 启动脚本"
+    parse-failed: "脚本解析失败: {reason}"
   stop:
     done: "已终止 {player} 的所有行为"
   kill:
