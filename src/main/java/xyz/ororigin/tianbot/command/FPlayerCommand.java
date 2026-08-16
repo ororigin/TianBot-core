@@ -74,7 +74,7 @@ public final class FPlayerCommand {
                                         .executes(FPlayerCommand::script))));
         commands.register(root.build(), Lang.get("command.description"), List.of());
     }
-    /** 切换假人 ghost（隐藏）模式：ghostmode true → 隐藏（ghost）；false → 可见。 */
+
     private static int ghostMode(CommandContext<CommandSourceStack> context) {
         Bot bot = resolveBot(context);
         if (bot == null) {
@@ -122,7 +122,6 @@ public final class FPlayerCommand {
         return 1;
     }
 
-    /** 解析并运行一段 JSON 脚本文本（script 模式）。非法 JSON 同步回显解析失败。 */
     private static int script(CommandContext<CommandSourceStack> context) {
         Bot bot = resolveBot(context);
         if (bot == null) {
@@ -139,7 +138,6 @@ public final class FPlayerCommand {
         return 1;
     }
 
-    /** 终止该假人所有行为（对标 Carpet /player stop）。 */
     private static int stop(CommandContext<CommandSourceStack> context) {
         Bot bot = resolveBot(context);
         if (bot == null) {
@@ -150,7 +148,6 @@ public final class FPlayerCommand {
         return 1;
     }
 
-    /** 下线（kill）该假人：触发 PlayerQuitEvent、存档、广播离开消息并清理登记。 */
     private static int kill(CommandContext<CommandSourceStack> context) {
         CommandSender sender = context.getSource().getSender();
         String name = StringArgumentType.getString(context, PLAYER_ARG);
@@ -260,13 +257,11 @@ public final class FPlayerCommand {
                                 })));
     }
 
-    /** 区间动作执行器（Bot + tick 数 → future）。 */
     @FunctionalInterface
     private interface IntervalAction {
         CompletableFuture<Void> apply(Bot bot, int ticks);
     }
 
-    /** 单发动作执行器（对标 Carpet manipulation）：解析假人 → 执行 → 异步回显。 */
     private static Command<CommandSourceStack> manipulate(
             String display, Function<Bot, CompletableFuture<Void>> action) {
         return context -> {
