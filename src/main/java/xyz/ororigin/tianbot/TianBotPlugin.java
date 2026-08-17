@@ -7,7 +7,7 @@ import xyz.ororigin.tianbot.api.BotPropertyApi;
 import xyz.ororigin.tianbot.api.TianBotApi;
 import xyz.ororigin.tianbot.bot.BotManager;
 import xyz.ororigin.tianbot.bot.GhostInfoListener;
-import xyz.ororigin.tianbot.command.FPlayerCommand;
+import xyz.ororigin.tianbot.command.TainBotAdminCommand;
 import xyz.ororigin.tianbot.data.BotPropertyRegistry;
 import xyz.ororigin.tianbot.data.DatabaseManager;
 import xyz.ororigin.tianbot.service.BotPropertyServiceImpl;
@@ -49,7 +49,7 @@ public final class TianBotPlugin extends JavaPlugin {
             getLogger().log(Level.SEVERE, Lang.get("log.db-init-failed"), e);
         }
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
-                FPlayerCommand.register(event.registrar()));
+                TainBotAdminCommand.register(event.registrar()));
         BotPropertyServiceImpl botProperties = new BotPropertyServiceImpl();
         api = new TianBotServiceImpl(botProperties);
         getServer().getServicesManager().register(TianBotApi.class, api, this, ServicePriority.Normal);

@@ -21,6 +21,8 @@ import xyz.ororigin.tianbot.bot.action.script.ScriptParseException;
 import xyz.ororigin.tianbot.data.DatabaseManager;
 import xyz.ororigin.tianbot.utils.Lang;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -33,18 +35,22 @@ import static xyz.ororigin.tianbot.command.CommandSupport.success;
 import static xyz.ororigin.tianbot.command.CommandSupport.suggestBots;
 
 
-public final class FPlayerCommand {
+public final class TainBotAdminCommand {
 
-    private FPlayerCommand() {
+    private TainBotAdminCommand() {
     }
 
     public static void register(Commands commands) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("tianbotadmin")
                 .requires(source -> source.getSender().hasPermission("tianbot.admin"))
+                .then(Commands.literal("botlist")
+                        .executes(TainBotAdminCommand::botList)
+                        .then(Commands.literal("ghost").executes(context -> botList(context, true)))
+                        .then(Commands.literal("visible").executes(context -> botList(context, false))))
                 .then(Commands.argument(PLAYER_ARG, StringArgumentType.word())
                         .suggests(suggestBots())
-                        .then(Commands.literal("stop").executes(FPlayerCommand::stop))
-                        .then(Commands.literal("kill").executes(FPlayerCommand::kill))
+                        .then(Commands.literal("stop").executes(TainBotAdminCommand::stop))
+                        .then(Commands.literal("kill").executes(TainBotAdminCommand::kill))
                         .then(actionCommand("use", "action.use", Bot::use, Bot::useContinuous, Bot::useInterval))
                         .then(actionCommand("jump", "action.jump", Bot::jump, Bot::jumpContinuous, Bot::jumpInterval))
                         .then(actionCommand("attack", "action.attack", Bot::attack, Bot::attackContinuous, Bot::attackInterval))
@@ -64,14 +70,14 @@ public final class FPlayerCommand {
                         .then(moveSubtree())
                         .then(Commands.literal("ghostmode")
                                 .then(Commands.argument("mode", BoolArgumentType.bool())
-                                        .executes(FPlayerCommand::ghostMode)))
-                        .then(Commands.literal("spawn").executes(FPlayerCommand::spawn))
+                                        .executes(TainBotAdminCommand::ghostMode)))
+                        .then(Commands.literal("spawn").executes(TainBotAdminCommand::spawn))
                         .then(Commands.literal("chat")
                                 .then(Commands.argument("message", StringArgumentType.greedyString())
-                                        .executes(FPlayerCommand::chat)))
+                                        .executes(TainBotAdminCommand::chat)))
                         .then(Commands.literal("script")
                                 .then(Commands.argument("script", StringArgumentType.greedyString())
-                                        .executes(FPlayerCommand::script))));
+                                        .executes(TainBotAdminCommand::script))));
         commands.register(root.build(), Lang.get("command.description"), List.of());
     }
 
@@ -157,6 +163,65 @@ public final class FPlayerCommand {
         respond(TianBotPlugin.getApi().stopBot(name), sender,
                 Lang.t("command.kill.done", "player", name));
         return 1;
+    }
+
+
+    private static int botList(CommandContext<CommandSourceStack> context) {
+        return botList(context, null);
+    }
+
+    private static int botList(CommandContext<CommandSourceStack> context, Boolean visibilityFilter) {
+        CommandSender sender = context.getSource().getSender();
+        List<Bot> bots = new ArrayList<>(BotManager.bots());
+        if (visibilityFilter != null) {
+            bots.removeIf(bot -> bot.isVisible() != visibilityFilter);
+        }
+        bots.sort(Comparator.comparing(Bot::name, String.CASE_INSENSITIVE_ORDER));
+        if (bots.isEmpty()) {
+            success(sender, Lang.get("command.botlist.empty"));
+            return 1;
+        }
+        success(sender, Lang.t("command.botlist.header", "count", bots.size()));
+        for (Bot bot : bots) {
+            success(sender, describeBot(bot));
+        }
+        return 1;
+    }
+
+    private static String describeBot(Bot bot) {
+        String mode = Lang.get(bot.isVisible() ? "command.mode.visible" : "command.mode.ghost");
+        String state = describeState(bot);
+        if (!bot.isSpawned() || bot.serverPlayer == null) {
+            return Lang.t("command.botlist.entry-basic", "name", bot.name(), "mode", mode, "state", state);
+        }
+        String world = bot.serverPlayer.level().dimension().identifier().toString();
+        int x = bot.serverPlayer.getBlockX();
+        int y = bot.serverPlayer.getBlockY();
+        int z = bot.serverPlayer.getBlockZ();
+        long onlineMillis = bot.spawnedAtMillis < 0 ? 0 : System.currentTimeMillis() - bot.spawnedAtMillis;
+        return Lang.t("command.botlist.entry",
+                "name", bot.name(), "mode", mode, "state", state,
+                "world", world, "x", x, "y", y, "z", z,
+                "online", formatDuration(onlineMillis));
+    }
+
+    private static String describeState(Bot bot) {
+        if (bot.isSpawned()) {
+            return Lang.get("command.botlist.state.spawned");
+        }
+        return switch (bot.spawnState) {
+            case NONE -> Lang.get("command.botlist.state.not-spawned");
+            case PREPARE, READY -> Lang.get("command.botlist.state.spawning");
+            case REMOVED -> Lang.get("command.botlist.state.removed");
+            default -> bot.spawnState.name();
+        };
+    }
+
+    private static String formatDuration(long millis) {
+        long totalSeconds = Math.max(0, millis / 1000);
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        return Lang.t("command.botlist.online-duration", "minutes", minutes, "seconds", seconds);
     }
 
 

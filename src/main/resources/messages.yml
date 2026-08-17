@@ -7,6 +7,17 @@ command:
     failed: "动作失败: {reason}"
     added: "已为 {player} 添加 {action} 动作"
     added.interval: "已为 {player} 添加 {action}(interval {ticks}) 动作"
+  botlist:
+    empty: "当前没有假人"
+    header: "TianBot 假人列表 ({count}):"
+    entry: "- {name}  [{mode}] [{state}]  世界: {world}  位置: ({x}, {y}, {z})  在线: {online}"
+    entry-basic: "- {name}  [{mode}] [{state}]"
+    online-duration: "{minutes}分{seconds}秒"
+    state:
+      spawned: "已生成"
+      spawning: "生成中"
+      not-spawned: "未生成"
+      removed: "已下线"
   ghost:
     switched: "假人 {player} 已切换为 {mode} 模式"
   mode:
