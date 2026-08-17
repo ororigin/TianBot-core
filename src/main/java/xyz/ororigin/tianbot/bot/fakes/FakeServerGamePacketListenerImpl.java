@@ -98,12 +98,6 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     @Override
     public void send(Packet<?> packet) {
         if (packet instanceof ClientboundSetEntityMotionPacket motion && motion.id() == this.player.getId()) {
-            // Player.causeExtraKnockback 在 connection.send(...) 返回后会立刻执行
-            // entity.setDeltaMovement(oldMovement) 把击退速度回退（服务端不为真人保留击退速度，位移由客户端负责）。
-            // 因此必须把 lerpMotion 延迟到 bot 所在区域的后续 tick（在回退之后）重新施加，
-            // 再由 tickPhysics -> doTick() -> travel() 集成出位移。
-            // 不能用 Bukkit.getScheduler()（Folia 的 CraftScheduler 会抛 UnsupportedOperationException），
-            // 也不能用 queueOrExecuteTickTask（同区域线程时会立即执行、仍在回退之前），必须用 queueTickTaskQueue 恒投递。
             ServerLevel level = this.player.level();
             if (level != null) {
                 int chunkX = SectionPos.blockToSectionCoord(this.player.getBlockX());
