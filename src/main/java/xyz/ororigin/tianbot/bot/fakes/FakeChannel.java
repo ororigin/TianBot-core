@@ -15,17 +15,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-/**
- * 假连接使用的伪 Netty 通道。
- * <p>
- * 真实玩家的 {@code ServerGamePacketListenerImpl.connection.channel} 是一个已连接的 Netty 通道，
- * 大量插件（ProtocolLib、TAB、GSit 等）在 {@code PlayerJoinEvent} 中会直接访问
- * {@code channel.attr(...)}、{@code channel.pipeline()}、{@code channel.eventLoop()}。
- * 若 channel 为 null，这些插件以及服务端自身的 {@code Connection.flush()} 都会抛 NPE。
- * 这里提供一个"永远在线、写即丢弃、事件循环真实存在"的伪通道，保证任何只读访问都不空指针。
- * <p>
- * 参考 minecraft-fakeplayer 的 {@code io.github.hello09x.fakeplayer.core.network.FakeChannel}。
- */
+
 public class FakeChannel extends AbstractChannel {
 
     /** 所有假人共用一个独立事件循环（静态，避免每假人一个线程） */

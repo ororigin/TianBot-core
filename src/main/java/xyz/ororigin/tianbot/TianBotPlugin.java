@@ -14,6 +14,7 @@ import xyz.ororigin.tianbot.service.BotPropertyServiceImpl;
 import xyz.ororigin.tianbot.service.TianBotServiceImpl;
 import xyz.ororigin.tianbot.utils.AuthMeCompat;
 import xyz.ororigin.tianbot.utils.Lang;
+import xyz.ororigin.tianbot.utils.PreventKickingCompat;
 
 import java.util.logging.Level;
 
@@ -40,6 +41,7 @@ public final class TianBotPlugin extends JavaPlugin {
         scriptMaxBurst = getConfig().getInt("script.max-burst-per-tick", 128);
         Lang.init(this);
         AuthMeCompat.init(this);
+        PreventKickingCompat.init(this);
         getServer().getPluginManager().registerEvents(new GhostInfoListener(), this);
         try {
             DatabaseManager.init(this);

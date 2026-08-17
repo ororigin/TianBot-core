@@ -18,3 +18,14 @@ script:
   # SequenceAction 展开序列时，若连续即时动作累计超过该值，会强制插入一个 WaitAction(1) 分割，
   # 保证循环让出区域线程（terminate 可达、不卡死区块线程）。默认 128。
   max-burst-per-tick: 128
+
+# 防踢出：阻止其他插件/服务端在特定时机误踢假人（如 PacketEvents 无法识别假通道时误踢）
+prevent-kicking:
+  # 模式：NEVER（不阻止） / ON_SPAWNING（仅出生保护期） / ALWAYS（始终忽略踢出，含手动 /kick，谨慎）
+  mode: ON_SPAWNING
+  # ON_SPAWNING 模式下：出生后多少 tick 内忽略踢出请求（近似 50ms/tick）
+  spawn-protection-ticks: 20
+  # 命中即"始终忽略"的踢出原因关键字（不区分大小写）。用于拦截无法识别假通道的库（如 PacketEvents）
+  # 在加入瞬间发出的误踢。留空则回退默认关键字 "failed to inject into a channel"。
+  ignore-reasons:
+    - "failed to inject into a channel"

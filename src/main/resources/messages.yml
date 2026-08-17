@@ -81,6 +81,8 @@ log:
   authme-auto-registered: "假人 {player} 未注册，已自动注册并强制登录（密码见 config authme.password）"
   authme-not-registered: "假人 {player} 未注册且 authme.auto-register 已关闭，无法跳过 AuthMe 登录流程"
   authme-reflect-failed: "AuthMe 兼容调用失败: {reason}"
+  kick-prevented-config: "防踢出已启用: 模式={mode}，出生保护={ticks} tick"
+  kick-prevented: "已忽略对假人 {player} 的踢出（原因: {reason}）"
 
 error:
   spawn-no-dimension: "假人生成失败: 无法获取生成点维度"

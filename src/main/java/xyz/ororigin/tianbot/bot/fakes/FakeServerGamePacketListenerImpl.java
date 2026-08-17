@@ -18,23 +18,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import xyz.ororigin.tianbot.TianBotPlugin;
 import xyz.ororigin.tianbot.bot.Bot;
+import xyz.ororigin.tianbot.utils.Lang;
+import xyz.ororigin.tianbot.utils.PreventKickingCompat;
 
-/**
- * 假人专用包监听器：拦截服务端发给假人自己的 {@link ClientboundSetEntityMotionPacket} 并回施速度。
- * <p>
- * 真实玩家的击退/爆炸等"外力位移"由客户端收到速度包后本地集成速度完成（客户端参与，见 Meteor Velocity 模块）；
- * 假人没有客户端，因此在这里手动把包里的速度 lerpMotion 回实体，随后由
- * {@code tickPhysics() -> serverPlayer.doTick() -> travel()} 在服务端集成出位移。
- * <p>
- * 注意：Player.causeExtraKnockback 在发完速度包后会立刻用 setDeltaMovement(oldMovement) 回退击退速度，
- * 因此本拦截必须把 lerpMotion 延迟（queueTickTaskQueue）到回退之后执行，不能同步或同线程立即执行。
- * <p>
- * 参考 minecraft-fakeplayer 的 FakeServerGamePacketListenerImpl。
- * 差异：Arbor 的 {@code ServerEntity.tick()} 在 sendToTrackingPlayersAndSelf 之前已把 hurtMarked 清为 false，
- * 故这里不再依赖 hurtMarked 判断，仅按包 id（发给假人自己）过滤即可——
- * 服务端只有 hurtMarked 路径会把速度包发给实体自己（needsSync 路径只发追踪者），按 id 过滤等价且更稳。
- */
 public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerImpl {
 
     /** 所属假人（用于执行真正的踢出/移除） */
@@ -51,16 +39,7 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
         super(server, connection, player, cookie);
     }
 
-    /**
-     * 假连接没有真实通道：{@link FakeConnection#send} 为空操作，导致父类 disconnect0 中
-     * {@code connection.send(ClientboundDisconnectPacket, thenRun(connection.disconnect))} 的
-     * thenRun 永不触发，整条断开链（handleDisconnection -> onDisconnect -> removePlayerFromWorld）断掉，
-     * 假人永远不会被移除。这里覆写 disconnect：在假人所在区域线程触发可取消的 PlayerKickEvent，
-     * 若未被取消则调用 {@link Bot#kick} 走标准 PlayerList.remove 完成真正踢出。
-     * <p>
-     * 所有 kick 入口（vanilla /kick、Bukkit kickPlayer/kick、ban、disconnectAsync 等）最终都会汇聚到
-     * {@code ServerCommonPacketListenerImpl.disconnect(DisconnectionDetails)} 的虚调用，覆写此方法即可全覆盖。
-     */
+
     @Override
     public void disconnect(final DisconnectionDetails details) {
         if (this.bot == null || this.player == null || this.player.isRemoved()) {
@@ -78,6 +57,15 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
 
     private void processKick(final DisconnectionDetails details) {
         if (this.kickHandled || this.player.isRemoved()) {
+            return;
+        }
+        // 防踢出：按 prevent-kicking 策略忽略
+        if (PreventKickingCompat.shouldPrevent(this.bot, details.reason())) {
+            TianBotPlugin.instance.getLogger().info(Lang.t(
+                    "log.kick-prevented",
+                    "player", this.player.getScoreboardName(),
+                    "reason", details.reason() == null ? "" : details.reason().getString()
+            ));
             return;
         }
         // 构建默认离开消息（与 Paper 默认一致）

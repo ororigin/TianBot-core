@@ -98,6 +98,7 @@ public class Bot implements BotHandle {
     public int loaderGraceTicks = 20;
     public boolean visible;
     public boolean worldAdded = false;
+    public long spawnedAtMillis = -1L;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Bot.class);
 
@@ -318,6 +319,7 @@ public class Bot implements BotHandle {
                         serverPlayer.getId(),
                         level.dimension().identifier(),
                         serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ());
+                this.spawnedAtMillis = System.currentTimeMillis();
                 this.spawnState = BotSpawnState.SPAWNED;
                 future.complete(null);
             } catch (Throwable t) {
