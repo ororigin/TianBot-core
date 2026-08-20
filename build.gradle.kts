@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.tianbot"
-version = "26.2-beta-2"
+version = "26.2-beta-3"
 
 repositories {
     maven("https://repo.papermc.io/repository/maven-public/")

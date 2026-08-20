@@ -217,13 +217,6 @@ src/main/java/xyz/ororigin/tianbot/
 └── utils/                    # Lang（本地化）/ AuthMeCompat / ThreadUtils
 ```
 
-## 备注
-
-- **构建产物**：`TianBot-core-26.2-beta-1.jar`（薄）与 `TianBot-core-26.2-beta-1-all.jar`（shadow，含 sqlite-jdbc）
-- **Folia 调度**：假人 tick 用实体调度器 `getScheduler().runAtFixedRate(...)`，自动跟随跨区块；区块操作走 Moonrise 区块任务调度器
-- 插件无 `paper-plugin.yml`，仅 `plugin.yml`（`folia-supported: true`，`load: STARTUP`）
-- 未自定义 Bukkit 事件：外部插件可监听假人生命周期触发的标准 `PlayerJoinEvent` / `PlayerQuitEvent`
-
 ## 开源协议
 
 本项目使用 [MIT License](LICENSE) 开源。

@@ -47,6 +47,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.ororigin.tianbot.TianBotPlugin;
 import xyz.ororigin.tianbot.api.BotHandle;
+import xyz.ororigin.tianbot.api.event.BotJoinEvent;
+import xyz.ororigin.tianbot.api.event.BotQuitEvent;
 import xyz.ororigin.tianbot.bot.action.ActionHandler;
 import xyz.ororigin.tianbot.bot.action.script.ScriptParser;
 import xyz.ororigin.tianbot.bot.action.module.AttackAction;
@@ -321,6 +323,8 @@ public class Bot implements BotHandle {
                         serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ());
                 this.spawnedAtMillis = System.currentTimeMillis();
                 this.spawnState = BotSpawnState.SPAWNED;
+                // 假人上线事件（此时假人已完全加入世界，供其他插件监听）
+                ((CraftServer) Bukkit.getServer()).getPluginManager().callEvent(new BotJoinEvent(this));
                 future.complete(null);
             } catch (Throwable t) {
                 future.completeExceptionally(t);
@@ -434,7 +438,6 @@ public class Bot implements BotHandle {
         return UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(StandardCharsets.UTF_8));
     }
 
-    // ==================== BotHandle：状态查询 ====================
 
     @Override
     public String name() {
@@ -455,8 +458,6 @@ public class Bot implements BotHandle {
     public boolean isSpawned() {
         return spawnState == BotSpawnState.SPAWNED || spawnState == BotSpawnState.TICKING;
     }
-
-    // ==================== BotHandle：动作便捷方法（异步，转发至 ActionHandler） ====================
 
     @Override
     public CompletableFuture<Void> attack() {
@@ -713,6 +714,11 @@ public class Bot implements BotHandle {
 
             @Override
             public CommandSender getBukkitSender(CommandSourceStack wrapper) {
+                // 执行者身份是假人本身（Bukkit 插件命令的 sender、权限检查均以假人为准）；
+                // 仅命令反馈（sendSuccess/sendFailure）经 sendSystemMessage 转发给用户。
+                if (wrapper.getEntity() != null) {
+                    return wrapper.getEntity().getBukkitEntity();
+                }
                 return feedbackTo;
             }
         };
@@ -768,7 +774,7 @@ public class Bot implements BotHandle {
         this.serverPlayer.disconnect();
         net.kyori.adventure.text.Component quitMessage;
         if (this.serverPlayer.isRemoved()) {
-            // 已经下线：软下线，补发事件、存档、清注册表、广播
+            // 已经下线
             quitMessage = this.softQuit(playerList, leaveMessage);
         } else {
             // 仍在世界：完整下线
@@ -781,6 +787,8 @@ public class Bot implements BotHandle {
             playerList.broadcastSystemMessage(PaperAdventure.asVanilla(quitMessage), false);
         }
         LOGGER.info("{}[BOT] logged out", this.serverPlayer.getPlainTextName());
+        // 假人下线事件（此时假人仍在 BotManager 中，供其他插件监听）
+        ((CraftServer) Bukkit.getServer()).getPluginManager().callEvent(new BotQuitEvent(this));
         this.cleanupAfterRemoval();
     }
 
@@ -793,13 +801,11 @@ public class Bot implements BotHandle {
                     net.kyori.adventure.text.Component.text(this.serverPlayer.getScoreboardName())
             );
         }
-        // PlayerQuitEvent（与 PlayerList.remove 一致，reason 可空）
         PlayerQuitEvent event = new PlayerQuitEvent(
                 this.serverPlayer.getBukkitEntity(), leaveMessage, this.serverPlayer.quitReason
         );
         ((CraftServer) Bukkit.getServer()).getPluginManager().callEvent(event);
         this.serverPlayer.getBukkitEntity().disconnect();
-        // 存档（对应 PlayerList.save；playerIo 为 public 字段，stats/advancements 为空则跳过）
         if (this.serverPlayer.getBukkitEntity().isPersistent()) {
             playerList.playerIo.save(this.serverPlayer);
         }

@@ -47,7 +47,7 @@ public final class TainBotAdminCommand {
                         .executes(TainBotAdminCommand::botList)
                         .then(Commands.literal("ghost").executes(context -> botList(context, true)))
                         .then(Commands.literal("visible").executes(context -> botList(context, false))))
-                .then(Commands.argument(PLAYER_ARG, StringArgumentType.word())
+                .then(Commands.argument(PLAYER_ARG, BotNameArgumentType.botName())
                         .suggests(suggestBots())
                         .then(Commands.literal("stop").executes(TainBotAdminCommand::stop))
                         .then(Commands.literal("kill").executes(TainBotAdminCommand::kill))
@@ -104,7 +104,6 @@ public final class TainBotAdminCommand {
         if (!DatabaseManager.isReady()) {
             success(sender, Lang.get("command.spawn.db-unavailable"));
         }
-        success(sender, Lang.t("command.spawn.starting", "player", name));
         TianBotPlugin.getApi().spawnBot(name).whenComplete((bot, throwable) -> {
             if (throwable != null) {
                 failure(sender, Lang.t("command.spawn.failed", "player", name, "reason", throwable.getMessage()));
