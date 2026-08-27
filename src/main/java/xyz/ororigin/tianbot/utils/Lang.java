@@ -51,15 +51,15 @@ public final class Lang {
 
     private static String resolve(String key) {
         if (messages != null) {
-            String value = messages.getString(key);
-            if (value != null) {
-                return value;
+            Object val = messages.get(key);
+            if (val instanceof String s) {
+                return s;
             }
         }
         if (defaults != null) {
-            String value = defaults.getString(key);
-            if (value != null) {
-                return value;
+            Object val = defaults.get(key);
+            if (val instanceof String s) {
+                return s;
             }
         }
         return null;

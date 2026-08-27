@@ -1,5 +1,6 @@
 package xyz.ororigin.tianbot.data;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,4 +29,17 @@ public interface IBotDatabase {
 
     /** 删除某个假人的全部自定义属性行（随 bot 删除级联使用）。 */
     CompletableFuture<Void> deleteCustomProperties(UUID uuid);
+
+    /**
+     * 按自定义属性值反查所有持有该值的假人名字（含离线假人）。
+     *
+     * <p>底层经 {@code bot_custom_properties} 表按 {@code prop_key + prop_value} 精确匹配，
+     * 再 JOIN 主表 {@code bot_properties} 取 {@code bot_name}。没有主表记录（从未持久化的）
+     * 假人会因 JOIN 缺失而不在该结果中。</p>
+     *
+     * @param key   属性键
+     * @param value 属性值（与写入时的序列化字符串一致）
+     * @return 匹配的假人名字列表（只读，顺序不保证）
+     */
+    CompletableFuture<List<String>> findBotNamesByCustomProperty(String key, String value);
 }

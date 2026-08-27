@@ -145,6 +145,25 @@ public class BotPropertyServiceImpl implements BotPropertyApi {
         return deleteProperty(uuidOf(name), key);
     }
 
+    // ==================== 反查 ====================
+
+    @Override
+    public CompletableFuture<List<String>> findPlayersByProperty(String key, Object value) {
+        BotProperty property = requireRegistered(key);
+        if (value == null) {
+            return CompletableFuture.completedFuture(Collections.emptyList());
+        }
+        CustomPropertyCodec.validateValue(property.type(), value);
+        String serialized = CustomPropertyCodec.serialize(property.type(), value);
+        IBotDatabase db = DatabaseManager.getDatabase();
+        if (db == null) {
+            // 读取在数据库不可用时回退为空（与插件"DB 失败不阻断"的既有约定一致）
+            return CompletableFuture.completedFuture(Collections.emptyList());
+        }
+        return db.findBotNamesByCustomProperty(key, serialized)
+                .thenApply(Collections::unmodifiableList);
+    }
+
     // ==================== 内部 ====================
 
     private BotProperty requireRegistered(String key) {

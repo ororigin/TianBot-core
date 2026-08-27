@@ -5,9 +5,11 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +33,7 @@ public class SqliteBotDatabase implements IBotDatabase {
 
     private final String upsertCustomSql;
     private final String selectCustomSql;
+    private final String selectCustomByValueSql;
     private final String deleteCustomSql;
     private final String deleteAllCustomSql;
 
@@ -69,6 +72,9 @@ public class SqliteBotDatabase implements IBotDatabase {
                 + " (`uuid`, `prop_key`, `prop_value`) VALUES (?, ?, ?)"
                 + " ON CONFLICT(`uuid`, `prop_key`) DO UPDATE SET `prop_value` = excluded.`prop_value`";
         this.selectCustomSql = "SELECT `prop_key`, `prop_value` FROM " + customTable + " WHERE `uuid` = ?";
+        this.selectCustomByValueSql = "SELECT p.`bot_name` FROM " + customTable + " c"
+                + " JOIN `" + SqliteSchemaMigrator.TABLE_NAME + "` p ON p.`uuid` = c.`uuid`"
+                + " WHERE c.`prop_key` = ? AND c.`prop_value` = ?";
         this.deleteCustomSql = "DELETE FROM " + customTable + " WHERE `uuid` = ? AND `prop_key` = ?";
         this.deleteAllCustomSql = "DELETE FROM " + customTable + " WHERE `uuid` = ?";
     }
@@ -132,10 +138,6 @@ public class SqliteBotDatabase implements IBotDatabase {
         });
     }
 
-    /**
-     * 供兼容场景使用：显式 UPDATE（区别于 UPSERT 语义）。
-     * 行不存在时不会创建。
-     */
     public CompletableFuture<Void> updateOnly(BotProperties botProperties) {
         return submit(conn -> {
             try (PreparedStatement ps = conn.prepareStatement(this.updateSql)) {
@@ -220,6 +222,23 @@ public class SqliteBotDatabase implements IBotDatabase {
                 ps.executeUpdate();
             }
             return null;
+        });
+    }
+
+    @Override
+    public CompletableFuture<List<String>> findBotNamesByCustomProperty(String key, String value) {
+        return submit(conn -> {
+            List<String> result = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(this.selectCustomByValueSql)) {
+                ps.setString(1, key);
+                ps.setString(2, value);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        result.add(rs.getString("bot_name"));
+                    }
+                }
+            }
+            return Collections.unmodifiableList(result);
         });
     }
 

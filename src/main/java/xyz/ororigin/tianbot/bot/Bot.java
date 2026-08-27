@@ -164,6 +164,8 @@ public class Bot implements BotHandle {
                     // 绑定所属假人：disconnect（kick）需要回调 Bot 执行真正踢出
                     listener.bot = this;
                     this.serverPlayer.connection = listener;
+                    // 绑定连接监听器：使 Folia region 拆分时 conn.getPlayer() 能返回假人，避免 NPE
+                    this.fakeConnection.setGamePacketListener(listener);
                     // 生成点所在区块坐标
                     SectionPos spawnChunkPos = SectionPos.of(savedPosition.position().orElse(new Vec3(0, 0, 0)));
                     this.spawnChunkPos = new ChunkPos(spawnChunkPos.getX(), spawnChunkPos.getZ());
@@ -406,6 +408,13 @@ public class Bot implements BotHandle {
             this.firstPhysicsTick = false;
         } else {
             serverPlayer.doTick();
+        }
+        // 手动递减无敌时间：ServerPlayer.tick() 中的玩家专属递减（--invulnerableTime）由实体
+        // tick 系统调用，但假人不走该链路（仅走 doTick() -> Player.tick() -> baseTick()，而
+        // baseTick() 明确跳过 ServerPlayer）。若不递减，invulnerableTime 恒为 20，导致
+        // hurtServer() 进入递增伤害分支：近战二次攻击无效、火焰/弹射物/摔落伤害全被免疫。
+        if (serverPlayer.invulnerableTime > 0) {
+            serverPlayer.invulnerableTime--;
         }
         if (this.chunkLoaderActive && this.spawnChunkPos != null && --this.loaderGraceTicks <= 0) {
             this.removeSpawnChunkTicket();

@@ -6,6 +6,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import xyz.ororigin.tianbot.TianBotPlugin;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.logging.Level;
 
@@ -14,12 +16,21 @@ public final class AuthMeCompat {
 
     private static final String AUTHME_PLUGIN_NAME = "AuthMe";
     private static final String AUTHME_API_CLASS = "fr.xephi.authme.api.v3.AuthMeApi";
-
-    // 反射句柄（detect() 成功探测后缓存，避免每次上线都重新反射）
+    private static final String AUTHME_PLAYER_CACHE_CLASS = "fr.xephi.authme.data.auth.PlayerCache";
+    private static final String AUTHME_PLAYER_AUTH_CLASS = "fr.xephi.authme.data.auth.PlayerAuth";
+    private static final String AUTHME_LOGIN_EVENT_CLASS = "fr.xephi.authme.events.LoginEvent";
     private static Method getInstanceMethod;
     private static Method isRegisteredMethod;
     private static Method forceLoginMethod;
     private static Method forceRegisterMethod;
+    private static Field playerCacheField;
+    private static Method playerCacheIsAuthenticated;
+    private static Method playerCacheUpdatePlayer;
+    private static Method playerAuthBuilder;
+    private static Method playerAuthBuilderName;
+    private static Method playerAuthBuilderRealName;
+    private static Method playerAuthBuilderBuild;
+    private static Constructor<?> loginEventConstructor;
     private static boolean available;
     private static boolean enabled;
     private static boolean autoRegister;
@@ -39,7 +50,6 @@ public final class AuthMeCompat {
             return;
         }
         if (!detect()) {
-            // 本插件 STARTUP 加载早于 AuthMe，启动完成后延迟再探测一次
             Bukkit.getGlobalRegionScheduler().runDelayed(plugin, t -> detect(), 40L);
         }
     }
@@ -66,15 +76,14 @@ public final class AuthMeCompat {
             if (registered) {
                 forceLoginMethod.invoke(api, player);
                 TianBotPlugin.instance.getLogger().info(Lang.t("log.authme-force-login", "player", name));
-                return true;
-            }
-            if (autoRegister) {
+            } else if (autoRegister) {
                 forceRegisterMethod.invoke(api, player, password, true);
                 TianBotPlugin.instance.getLogger().info(Lang.t("log.authme-auto-registered", "player", name));
-                return true;
+            } else {
+                TianBotPlugin.instance.getLogger().warning(Lang.t("log.authme-not-registered", "player", name));
             }
-            TianBotPlugin.instance.getLogger().warning(Lang.t("log.authme-not-registered", "player", name));
-            return false;
+            markAuthenticated(player);
+            return true;
         } catch (ReflectiveOperationException e) {
             TianBotPlugin.instance.getLogger().log(
                     Level.WARNING,
@@ -100,6 +109,7 @@ public final class AuthMeCompat {
             forceLoginMethod = apiClass.getMethod("forceLogin", Player.class);
             forceRegisterMethod = apiClass.getMethod("forceRegister", Player.class, String.class, boolean.class);
             available = true;
+            probeSessionHooks();
             TianBotPlugin.instance.getLogger().info(Lang.get("log.authme-compat-enabled"));
             return true;
         } catch (ReflectiveOperationException e) {
@@ -108,6 +118,75 @@ public final class AuthMeCompat {
                     Lang.t("log.authme-detect-failed", "reason", e.toString()),
                     e);
             return false;
+        }
+    }
+
+    private static void probeSessionHooks() {
+        try {
+            Class<?> apiClass = Class.forName(AUTHME_API_CLASS);
+            Class<?> playerCacheClass = Class.forName(AUTHME_PLAYER_CACHE_CLASS);
+            Class<?> playerAuthClass = Class.forName(AUTHME_PLAYER_AUTH_CLASS);
+            Class<?> builderClass = Class.forName(AUTHME_PLAYER_AUTH_CLASS + "$Builder");
+            Class<?> loginEventClass = Class.forName(AUTHME_LOGIN_EVENT_CLASS);
+
+            playerCacheField = apiClass.getDeclaredField("playerCache");
+            playerCacheField.setAccessible(true);
+            playerCacheIsAuthenticated = playerCacheClass.getMethod("isAuthenticated", String.class);
+            playerCacheUpdatePlayer = playerCacheClass.getMethod("updatePlayer", playerAuthClass);
+            playerAuthBuilder = playerAuthClass.getMethod("builder");
+            playerAuthBuilderName = builderClass.getMethod("name", String.class);
+            playerAuthBuilderRealName = builderClass.getMethod("realName", String.class);
+            playerAuthBuilderBuild = builderClass.getMethod("build");
+            loginEventConstructor = loginEventClass.getConstructor(Player.class);
+        } catch (ReflectiveOperationException e) {
+            TianBotPlugin.instance.getLogger().warning(Lang.t(
+                    "log.authme-cache-probe-failed", "reason", e.toString()));
+        }
+    }
+
+    private static void markAuthenticated(Player player) {
+        if (!available || player == null || playerCacheField == null) {
+            return;
+        }
+        try {
+            Object api = getInstanceMethod.invoke(null);
+            if (api == null) {
+                return;
+            }
+            Object playerCache = playerCacheField.get(api);
+            if (playerCache == null) {
+                return;
+            }
+            String name = player.getName();
+            boolean authenticated = (Boolean) playerCacheIsAuthenticated.invoke(playerCache, name);
+            if (authenticated) {
+                return;
+            }
+            Object builder = playerAuthBuilder.invoke(null);
+            builder = playerAuthBuilderName.invoke(builder, name);
+            builder = playerAuthBuilderRealName.invoke(builder, name);
+            Object auth = playerAuthBuilderBuild.invoke(builder);
+            playerCacheUpdatePlayer.invoke(playerCache, auth);
+            TianBotPlugin.instance.getLogger().info(Lang.t("log.authme-cache-marked", "player", name));
+            fireLoginEvent(player);
+        } catch (ReflectiveOperationException e) {
+            TianBotPlugin.instance.getLogger().log(
+                    Level.WARNING,
+                    Lang.t("log.authme-cache-mark-failed", "reason", e.toString()),
+                    e);
+        }
+    }
+
+    private static void fireLoginEvent(Player player) {
+        if (loginEventConstructor == null) {
+            return;
+        }
+        try {
+            Object event = loginEventConstructor.newInstance(player);
+            Bukkit.getPluginManager().callEvent((org.bukkit.event.Event) event);
+        } catch (ReflectiveOperationException e) {
+            TianBotPlugin.instance.getLogger().warning(Lang.t(
+                    "log.authme-login-event-failed", "reason", e.toString()));
         }
     }
 }

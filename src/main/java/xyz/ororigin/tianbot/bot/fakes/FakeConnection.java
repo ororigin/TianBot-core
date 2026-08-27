@@ -23,7 +23,26 @@ public class FakeConnection extends Connection {
         this.hostname = serverHost;
     }
 
-    /** 解析假人地址为 InetAddress（未解析的 hostname 兜底为回环地址，避免伪通道 remoteAddress 构造失败） */
+    private static final java.lang.reflect.Field PACKET_LISTENER_FIELD = initPacketListenerField();
+
+    private static java.lang.reflect.Field initPacketListenerField() {
+        try {
+            java.lang.reflect.Field field = Connection.class.getDeclaredField("packetListener");
+            field.setAccessible(true);
+            return field;
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("Unable to access Connection.packetListener", e);
+        }
+    }
+
+    public void setGamePacketListener(PacketListener listener) {
+        try {
+            PACKET_LISTENER_FIELD.set(this, listener);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Unable to set Connection.packetListener", e);
+        }
+    }
+
     private static InetAddress resolveAddress(InetSocketAddress address) {
         InetAddress resolved = address.getAddress();
         if (resolved != null) {
@@ -82,9 +101,6 @@ public class FakeConnection extends Connection {
     @Override
     public void setupOutboundProtocol(ProtocolInfo<?> protocol) {
     }
-
-    // 注：Folia 26.2 的 Connection 没有 setupInboundProtocolAsync / setupOutboundProtocolAsync
-    // （Arbor 26.2 有），故此处不再覆写这两个空操作方法。
 
     @Override
     public void runOnceConnected(Consumer<Connection> action) {

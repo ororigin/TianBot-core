@@ -90,8 +90,12 @@ log:
   authme-api-null: "AuthMe API 尚未初始化，本次跳过强制登录"
   authme-force-login: "假人 {player} 已强制跳过 AuthMe 登录"
   authme-auto-registered: "假人 {player} 未注册，已自动注册并强制登录（密码见 config authme.password）"
-  authme-not-registered: "假人 {player} 未注册且 authme.auto-register 已关闭，无法跳过 AuthMe 登录流程"
+  authme-not-registered: "假人 {player} 未注册且 authme.auto-register 已关闭，已直接标记为已认证（免登录）"
   authme-reflect-failed: "AuthMe 兼容调用失败: {reason}"
+  authme-cache-marked: "假人 {player} 已直接标记为 AuthMe 已认证（会话兜底）"
+  authme-cache-probe-failed: "AuthMe 会话兜底句柄探测失败: {reason}"
+  authme-cache-mark-failed: "标记假人为 AuthMe 已认证失败: {reason}"
+  authme-login-event-failed: "触发 AuthMe LoginEvent 失败: {reason}"
   kick-prevented-config: "防踢出已启用: 模式={mode}，出生保护={ticks} tick"
   kick-prevented: "已忽略对假人 {player} 的踢出（原因: {reason}）"
 
