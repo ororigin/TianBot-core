@@ -253,7 +253,10 @@ public class Bot implements BotHandle {
                 // 构建加入消息
                 MutableComponent component = Component.translatable("multiplayer.player.joined", serverPlayer.getDisplayName());
                 component.withStyle(ChatFormatting.YELLOW);
-                // 注册进玩家索引表（仅 visible 假人；ghost 不进注册表 -> /list、RCON、Tab 均不可见）
+                // 注册进玩家索引表
+                // - visible 假人：完整注册（players / playersByUUID / playersByName）-> /list、RCON、Tab 均可见
+                // - ghost 假人：仅注册 playersByUUID，保证 Bukkit.getPlayer(uuid) 能查到（供 Residence 等插件按 UUID 查人），
+                //   但不进 players / playersByName -> /list、RCON、getPlayerExact 均不可见，保持隐形
                 if (this.visible) {
                     playerList.getPlayers().add(serverPlayer);
                     playerList.getPlayersByUUID().put(serverPlayer.getUUID(), serverPlayer);
@@ -271,6 +274,9 @@ public class Bot implements BotHandle {
                         TianBotPlugin.instance.getLogger().severe(Lang.get("log.bot-name-register-failed"));
                         TianBotPlugin.instance.getLogger().severe(Lang.t("log.bot-name-register-failed-detail", "reason", e));
                     }
+                } else {
+                    // ghost：仅注册 UUID 索引，保持按 UUID 可查
+                    playerList.getPlayersByUUID().put(serverPlayer.getUUID(), serverPlayer);
                 }
                 // 抑制实体跟踪
                 serverPlayer.suppressTrackerForLogin = true;
