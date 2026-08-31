@@ -19,7 +19,6 @@ public class GhostInfoListener implements Listener {
         if (bot == null || bot.visible || bot.serverPlayer == null) {
             return;
         }
-        // 必须在 addPairing 发送 spawn bundle 之前把 PlayerInfo 入队（同一 connection 有序）
         ClientboundPlayerInfoUpdatePacket packet =
                 new ClientboundPlayerInfoUpdatePacket(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER, bot.serverPlayer);
         ((CraftPlayer) event.getPlayer()).getHandle().connection.send(packet);
@@ -28,7 +27,6 @@ public class GhostInfoListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onUntrack(PlayerUntrackEntityEvent event) {
         Bot bot = BotManager.botMap.get(event.getEntity().getUniqueId());
-        // 仅 ghost 假人需要手动清理 info；visible 假人走 vanilla（Tab 保留）
         if (bot == null || bot.visible || bot.serverPlayer == null) {
             return;
         }

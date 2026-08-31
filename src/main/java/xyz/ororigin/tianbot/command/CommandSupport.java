@@ -7,6 +7,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.command.CommandSender;
 import xyz.ororigin.tianbot.bot.Bot;
 import xyz.ororigin.tianbot.bot.BotManager;
+import xyz.ororigin.tianbot.bot.BotNamePrefix;
 import xyz.ororigin.tianbot.utils.Lang;
 
 import java.util.ArrayList;
@@ -24,14 +25,15 @@ public final class CommandSupport {
 
     public static Bot resolveBot(CommandContext<CommandSourceStack> context) {
         CommandSender sender = context.getSource().getSender();
-        String name = StringArgumentType.getString(context, PLAYER_ARG);
-        Bot bot = BotManager.getBot(name).orElse(null);
+        String displayName = StringArgumentType.getString(context, PLAYER_ARG);
+        String realName = BotNamePrefix.getBotRealName(displayName);
+        Bot bot = BotManager.getBot(realName).orElse(null);
         if (bot == null) {
-            failure(sender, Lang.t("command.bot.not-found", "player", name));
+            failure(sender, Lang.t("command.bot.not-found", "player", displayName));
             return null;
         }
         if (!bot.isSpawned()) {
-            failure(sender, Lang.t("command.bot.not-spawned", "player", name));
+            failure(sender, Lang.t("command.bot.not-spawned", "player", displayName));
             return null;
         }
         return bot;
@@ -60,7 +62,7 @@ public final class CommandSupport {
         return (context, builder) -> {
             List<String> names = new ArrayList<>();
             for (Bot bot : BotManager.bots()) {
-                names.add(bot.name());
+                names.add(BotNamePrefix.getDisplayName(bot.name()));
             }
             names.sort(Comparator.naturalOrder());
             for (String name : names) {

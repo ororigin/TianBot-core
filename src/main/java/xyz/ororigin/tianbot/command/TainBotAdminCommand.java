@@ -17,6 +17,7 @@ import org.bukkit.command.CommandSender;
 import xyz.ororigin.tianbot.TianBotPlugin;
 import xyz.ororigin.tianbot.bot.Bot;
 import xyz.ororigin.tianbot.bot.BotManager;
+import xyz.ororigin.tianbot.bot.BotNamePrefix;
 import xyz.ororigin.tianbot.bot.action.script.ScriptParseException;
 import xyz.ororigin.tianbot.data.DatabaseManager;
 import xyz.ororigin.tianbot.utils.Lang;
@@ -95,20 +96,25 @@ public final class TainBotAdminCommand {
     }
     private static int spawn(CommandContext<CommandSourceStack> context) {
         CommandSender sender = context.getSource().getSender();
-        String name = StringArgumentType.getString(context, PLAYER_ARG);
-        Bot existing = BotManager.getBot(name).orElse(null);
+        String displayName = StringArgumentType.getString(context, PLAYER_ARG);
+        if (!BotNamePrefix.isDisplayNameValid(displayName)) {
+            failure(sender, Lang.t("command.spawn.name-too-long", "max", BotNamePrefix.maxDisplayNameLength()));
+            return 0;
+        }
+        String realName = BotNamePrefix.getBotRealName(displayName);
+        Bot existing = BotManager.getBot(realName).orElse(null);
         if (existing != null && existing.isSpawned()) {
-            failure(sender, Lang.t("command.spawn.already-online", "player", name));
+            failure(sender, Lang.t("command.spawn.already-online", "player", displayName));
             return 0;
         }
         if (!DatabaseManager.isReady()) {
             success(sender, Lang.get("command.spawn.db-unavailable"));
         }
-        TianBotPlugin.getApi().spawnBot(name).whenComplete((bot, throwable) -> {
+        TianBotPlugin.getApi().spawnBot(realName).whenComplete((bot, throwable) -> {
             if (throwable != null) {
-                failure(sender, Lang.t("command.spawn.failed", "player", name, "reason", throwable.getMessage()));
+                failure(sender, Lang.t("command.spawn.failed", "player", displayName, "reason", throwable.getMessage()));
             } else {
-                success(sender, Lang.t("command.spawn.success", "player", name));
+                success(sender, Lang.t("command.spawn.success", "player", displayName));
             }
         });
         return 1;
@@ -155,12 +161,12 @@ public final class TainBotAdminCommand {
 
     private static int kill(CommandContext<CommandSourceStack> context) {
         CommandSender sender = context.getSource().getSender();
-        String name = StringArgumentType.getString(context, PLAYER_ARG);
+        String displayName = StringArgumentType.getString(context, PLAYER_ARG);
         if (resolveBot(context) == null) {
             return 0;
         }
-        respond(TianBotPlugin.getApi().stopBot(name), sender,
-                Lang.t("command.kill.done", "player", name));
+        respond(TianBotPlugin.getApi().stopBot(BotNamePrefix.getBotRealName(displayName)), sender,
+                Lang.t("command.kill.done", "player", displayName));
         return 1;
     }
 
@@ -191,7 +197,8 @@ public final class TainBotAdminCommand {
         String mode = Lang.get(bot.isVisible() ? "command.mode.visible" : "command.mode.ghost");
         String state = describeState(bot);
         if (!bot.isSpawned() || bot.serverPlayer == null) {
-            return Lang.t("command.botlist.entry-basic", "name", bot.name(), "mode", mode, "state", state);
+            return Lang.t("command.botlist.entry-basic",
+                    "name", BotNamePrefix.getDisplayName(bot.name()), "mode", mode, "state", state);
         }
         String world = bot.serverPlayer.level().dimension().identifier().toString();
         int x = bot.serverPlayer.getBlockX();
@@ -199,7 +206,7 @@ public final class TainBotAdminCommand {
         int z = bot.serverPlayer.getBlockZ();
         long onlineMillis = bot.spawnedAtMillis < 0 ? 0 : System.currentTimeMillis() - bot.spawnedAtMillis;
         return Lang.t("command.botlist.entry",
-                "name", bot.name(), "mode", mode, "state", state,
+                "name", BotNamePrefix.getDisplayName(bot.name()), "mode", mode, "state", state,
                 "world", world, "x", x, "y", y, "z", z,
                 "online", formatDuration(onlineMillis));
     }
@@ -315,7 +322,7 @@ public final class TainBotAdminCommand {
                                     }
                                     int ticks = IntegerArgumentType.getInteger(context, "ticks");
                                     respond(interval.apply(bot, ticks), context.getSource().getSender(),
-                                            Lang.t("command.action.added.interval",
+                                            Lang.t("command.action.added-interval",
                                                     "player", bot.name(), "action", Lang.get(display), "ticks", ticks));
                                     return 1;
                                 })));

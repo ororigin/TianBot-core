@@ -7,6 +7,7 @@ import xyz.ororigin.tianbot.api.TianBotApi;
 import xyz.ororigin.tianbot.bot.Bot;
 import xyz.ororigin.tianbot.bot.BotConfig;
 import xyz.ororigin.tianbot.bot.BotManager;
+import xyz.ororigin.tianbot.command.BotNameArgumentType;
 import xyz.ororigin.tianbot.data.BotProperties;
 import xyz.ororigin.tianbot.data.DatabaseManager;
 import xyz.ororigin.tianbot.data.IBotDatabase;
@@ -39,6 +40,10 @@ public class TianBotServiceImpl implements TianBotApi {
 
     @Override
     public CompletableFuture<BotHandle> spawnBot(String name, String host, int port, boolean ghost) {
+        if (!BotNameArgumentType.isValidName(name)) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException(
+                    Lang.t("command.spawn.name-too-long", "max", BotNameArgumentType.MAX_NAME_LENGTH)));
+        }
         BotConfig config = new BotConfig();
         config.botName = name;
         config.address = host;

@@ -1,6 +1,11 @@
-# FoliaBot 配置
+#Tianbot core 配置文件
+
+# 假人名称前缀
+bot:
+  name-prefix: "[假人]"
+
 database:
-  # SQLite 数据库文件名（位于 plugins/FoliaBot/ 目录下）
+  # SQLite 数据库文件名
   file: bots.db
 
 # AuthMe 兼容：假人上线时强制跳过 AuthMe 登录/注册流程（仅在AuthMe存在时生效）
@@ -9,21 +14,19 @@ authme:
   enabled: true
   # 未注册的假人是否自动注册并登录
   auto-register: true
-  # 自动注册使用的密码（auto-register 开启时生效）
+  # 自动注册使用的密码
   password: "TianBot_AutoRegister"
 
 # script 模式（动作序列循环执行）
 script:
   # 单个 tick 内连续执行的即时动作上限。
-  # SequenceAction 展开序列时，若连续即时动作累计超过该值，会强制插入一个 WaitAction(1) 分割，
-  # 保证循环让出区域线程（terminate 可达、不卡死区块线程）。默认 128。
   max-burst-per-tick: 128
 
-# 防踢出：阻止其他插件/服务端在特定时机误踢假人（如 PacketEvents 无法识别假通道时误踢）
+# 防踢出
 prevent-kicking:
-  # 模式：NEVER（不阻止） / ON_SPAWNING（仅出生保护期） / ALWAYS（始终忽略踢出，含手动 /kick，谨慎）
+  # 模式：NEVER（不阻止） / ON_SPAWNING（仅出生保护期） / ALWAYS（始终忽略踢出，含手动 /kick，谨慎使用）
   mode: ON_SPAWNING
-  # ON_SPAWNING 模式下：出生后多少 tick 内忽略踢出请求（近似 50ms/tick）
+  # ON_SPAWNING 模式下：出生后多少 tick 内忽略踢出请求
   spawn-protection-ticks: 20
   # 命中即"始终忽略"的踢出原因关键字（不区分大小写）。用于拦截无法识别假通道的库（如 PacketEvents）
   # 在加入瞬间发出的误踢，以及 AuthMe 判定假人未登录时发出的 login.timeout 踢出。

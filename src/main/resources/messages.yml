@@ -6,12 +6,12 @@ command:
   action:
     failed: "动作失败: {reason}"
     added: "已为 {player} 添加 {action} 动作"
-    added.interval: "已为 {player} 添加 {action}(interval {ticks}) 动作"
+    added-interval: "已为 {player} 添加 {action}(interval {ticks}) 动作"
   botlist:
     empty: "当前没有假人"
     header: "TianBot 假人列表 ({count}):"
     entry: "- {name}  [{mode}] [{state}]  世界: {world}  位置: ({x}, {y}, {z})  在线: {online}"
-    entry-basic: "- {name}  [{mode}] [{state}]"
+    entry-basic: "- {name}  [{mode}&f] [{state}]"
     online-duration: "{minutes}分{seconds}秒"
     state:
       spawned: "已生成"
@@ -26,6 +26,7 @@ command:
   spawn:
     already-online: "假人 {player} 已经在线啦"
     db-unavailable: "注意: 数据库模块不可用，假人属性未持久化。"
+    name-too-long: "&c假人名字过长（最多 {max} 个字符）"
     starting: "正在生成假人: {player}"
     success: "假人 {player} 生成成功！"
     failed: "假人 {player} 生成失败: {reason}"
@@ -92,8 +93,8 @@ log:
   authme-auto-registered: "假人 {player} 未注册，已自动注册并强制登录（密码见 config authme.password）"
   authme-not-registered: "假人 {player} 未注册且 authme.auto-register 已关闭，已直接标记为已认证（免登录）"
   authme-reflect-failed: "AuthMe 兼容调用失败: {reason}"
-  authme-cache-marked: "假人 {player} 已直接标记为 AuthMe 已认证（会话兜底）"
-  authme-cache-probe-failed: "AuthMe 会话兜底句柄探测失败: {reason}"
+  authme-cache-marked: "假人 {player} 已直接标记为 AuthMe 已认证"
+  authme-cache-probe-failed: "AuthMe 会话句柄探测失败: {reason}"
   authme-cache-mark-failed: "标记假人为 AuthMe 已认证失败: {reason}"
   authme-login-event-failed: "触发 AuthMe LoginEvent 失败: {reason}"
   kick-prevented-config: "防踢出已启用: 模式={mode}，出生保护={ticks} tick"

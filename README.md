@@ -1,3 +1,4 @@
+> 本文档是咱偷懒完全由AI写的，有疏漏请见谅（
 # TianBot-core
 
 针对 **Folia 26.2** 的假人（Fake Player）插件 —— Carpet 假人功能在 Folia 服务端上的插件移植。
@@ -13,6 +14,8 @@
 - **自定义属性 API**：第三方插件可注册假人自定义属性，SQLite 持久化，离线假人也可读写
 - **AuthMe 兼容**：假人上线自动跳过 AuthMe 登录，可自动注册（全反射可选集成）
 - **SQLite 持久化**：假人属性数据库（WAL），数据库不可用不阻断插件运行
+- **假人名称前缀**：假人显示名带可配置前缀（默认 `[假人]`），便于与真人区分
+- **防踢出**：出生保护期内或命中指定原因自动忽略踢出请求，兼容无法识别假通道的库（如 PacketEvents）
 - **Folia 区域线程安全**：所有操作均调度到假人所在区域/实体线程执行
 - **本地化消息**：基于 `messages.yml` 的中文反馈体系，可热编辑
 
@@ -31,7 +34,7 @@
 
 ```bash
 gradlew.bat build        # 编译并打包
-gradlew.bat shadowJar    # 打包运行时依赖（sqlite-jdbc）→ build/libs/TianBot-core-26.2-beta-1-all.jar
+gradlew.bat shadowJar    # 打包运行时依赖（sqlite-jdbc）→ build/libs/TianBot-core-26.2-RC-1.0-all.jar
 gradlew.bat deploy       # shadowJar 后复制到测试服 plugins 目录
 ```
 
@@ -51,6 +54,7 @@ gradlew.bat deploy       # shadowJar 后复制到测试服 plugins 目录
 | `/tianbotadmin <假人> ghostmode true\|false` | 运行时切换可见 / 隐藏 |
 | `/tianbotadmin <假人> stop` | 终止该假人的所有行为（清空队列） |
 | `/tianbotadmin <假人> kill` | 下线假人（触发 PlayerQuitEvent、存档、广播离开） |
+| `/tianbotadmin botlist [ghost\|visible]` | 列出所有在线假人（含世界/坐标/在线时长；可按可见性过滤） |
 
 ### 动作
 
@@ -170,16 +174,49 @@ bot.stopCurrentActions();     // 仅停止当前动作，保留队列
 ```java
 BotPropertyApi props = Bukkit.getServicesManager().load(BotPropertyApi.class);
 
+// 注册属性（key / 类型 / 默认值）
 props.register(BotProperty.of("home_world", String.class, "overworld"));
+props.unregister("home_world");             // 注销
+Optional<BotProperty> p = props.registered("home_world");
+
+// 读写（支持 UUID 或名字）
 props.setProperty("bot1", "home_world", "nether");
 props.getProperty("bot1", "home_world").thenAccept(v -> { /* ... */ });
+props.getProperties("bot1").thenAccept(map -> { /* 全部属性 */ });
+props.deleteProperty("bot1", "home_world"); // 删除某属性
+props.setProperties("bot1", Map.of("a", 1, "b", 2)); // 批量写入
+
+// 按属性值反查玩家
+props.findPlayersByProperty("home_world", "nether").thenAccept(names -> { /* ... */ });
 ```
 
 按名字读写时以 OfflinePlayer 规则推导 UUID，因此**离线假人也同样可读可写**。
 
+### 假人事件
+
+假人上线 / 下线时在对应区域线程触发以下 Bukkit 事件（仅暴露 `BotHandle`，不含 NMS 类型），
+可被任意插件通过 `@EventHandler` 监听：
+
+```java
+@EventHandler
+public void onBotJoin(BotJoinEvent event) {
+    BotHandle bot = event.getBot();
+    // bot.name(), bot.uuid(), bot.isSpawned() ...
+}
+
+@EventHandler
+public void onBotQuit(BotQuitEvent event) {
+    // 假人下线后、从 BotManager 移除登记前触发
+    BotHandle bot = event.getBot();
+}
+```
+
 ## 配置文件（`config.yml`）
 
 ```yaml
+bot:
+  name-prefix: "[假人]"       # 假人显示名前缀
+
 database:
   file: bots.db              # SQLite 数据库文件名（plugins/Tianbot-core/ 下）
 
@@ -190,6 +227,14 @@ authme:
 
 script:
   max-burst-per-tick: 128    # 单 tick 内连续即时动作上限（SequenceAction 分片阀门）
+
+prevent-kicking:
+  mode: ON_SPAWNING          # NEVER / ON_SPAWNING（仅出生保护期）/ ALWAYS（始终忽略，含手动 /kick）
+  spawn-protection-ticks: 20 # ON_SPAWNING 下：出生后多少 tick 内忽略踢出
+  ignore-reasons:            # 命中即"始终忽略"的踢出原因关键字（不区分大小写）
+    - "failed to inject into a channel"
+    - "login timeout"
+    - "登录超时"
 ```
 
 消息文案在 `plugins/Tianbot-core/messages.yml`（首次启动导出，中文默认，可编辑）。
@@ -206,13 +251,14 @@ script:
 src/main/java/xyz/ororigin/tianbot/
 ├── TianBotPlugin.java        # 主类（JavaPlugin，Folia 检测、API 注册）
 ├── api/                      # 对外接口：TianBotApi / BotHandle / BotPropertyApi / BotProperty
+│   └── event/                # 假人事件：BotJoinEvent / BotQuitEvent
 ├── service/                  # 服务层实现（TianBotServiceImpl / BotPropertyServiceImpl）
-├── bot/                      # 假人核心：Bot / BotManager / BotConfig / GhostInfoListener
+├── bot/                      # 假人核心：Bot / BotManager / BotConfig / BotNamePrefix / GhostInfoListener
 │   ├── fakes/                # 伪造连接栈：FakeConnection / FakeChannel / FakeChannelPipeline ...
 │   └── action/               # 动作框架：Action / PersistentAction / ToggleAction / ActionHandler
 │       ├── module/           # 具体动作：Attack / Use / Jump / Drop / Move / Look / Mount ...
 │       └── script/           # Script 解析：ScriptParser / ScriptDefinition
-├── command/                  # Paper Brigadier 命令：FPlayerCommand / CommandSupport
+├── command/                  # Paper Brigadier 命令：TainBotAdminCommand / BotNameArgumentType / CommandSupport
 ├── data/                     # 数据层：DatabaseManager / SqliteBotDatabase / BotPropertyRegistry ...
 └── utils/                    # Lang（本地化）/ AuthMeCompat / ThreadUtils
 ```

@@ -15,13 +15,9 @@ import xyz.ororigin.tianbot.bot.action.ActionResource;
 import xyz.ororigin.tianbot.bot.action.FinishReason;
 import xyz.ororigin.tianbot.bot.action.PersistentAction;
 import xyz.ororigin.tianbot.bot.action.util.BotTracer;
+import xyz.ororigin.tianbot.bot.action.util.ManualAttackHelper;
 
 import java.util.Set;
-
-/**
- * 移植 Carpet 假人的 ATTACK 逻辑
- */
-
 
 public class AttackAction extends PersistentAction {
 
@@ -128,7 +124,12 @@ public class AttackAction extends PersistentAction {
                     if (!TickThread.isTickThreadFor(target)) {
                         return false;
                     }
-                    player.attack(target);
+                    // 持剑攻击走手动路径（复刻原版判定并主动触发横扫），其余仍走原版
+                    if (ManualAttackHelper.isHoldingSword(player)) {
+                        ManualAttackHelper.perform(player, target);
+                    } else {
+                        player.attack(target);
+                    }
                     player.swing(InteractionHand.MAIN_HAND);
                 }
                 player.resetAttackStrengthTicker();

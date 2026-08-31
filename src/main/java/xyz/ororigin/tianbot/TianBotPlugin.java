@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import xyz.ororigin.tianbot.api.BotPropertyApi;
 import xyz.ororigin.tianbot.api.TianBotApi;
 import xyz.ororigin.tianbot.bot.BotManager;
+import xyz.ororigin.tianbot.bot.BotNamePrefix;
 import xyz.ororigin.tianbot.bot.GhostInfoListener;
 import xyz.ororigin.tianbot.command.TainBotAdminCommand;
 import xyz.ororigin.tianbot.data.BotPropertyRegistry;
@@ -39,6 +40,7 @@ public final class TianBotPlugin extends JavaPlugin {
         }
         saveDefaultConfig();
         scriptMaxBurst = getConfig().getInt("script.max-burst-per-tick", 128);
+        BotNamePrefix.init(this);
         Lang.init(this);
         AuthMeCompat.init(this);
         PreventKickingCompat.init(this);

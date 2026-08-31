@@ -254,9 +254,6 @@ public class Bot implements BotHandle {
                 MutableComponent component = Component.translatable("multiplayer.player.joined", serverPlayer.getDisplayName());
                 component.withStyle(ChatFormatting.YELLOW);
                 // 注册进玩家索引表
-                // - visible 假人：完整注册（players / playersByUUID / playersByName）-> /list、RCON、Tab 均可见
-                // - ghost 假人：仅注册 playersByUUID，保证 Bukkit.getPlayer(uuid) 能查到（供 Residence 等插件按 UUID 查人），
-                //   但不进 players / playersByName -> /list、RCON、getPlayerExact 均不可见，保持隐形
                 if (this.visible) {
                     playerList.getPlayers().add(serverPlayer);
                     playerList.getPlayersByUUID().put(serverPlayer.getUUID(), serverPlayer);
@@ -283,6 +280,9 @@ public class Bot implements BotHandle {
                 ServerLevel level = serverPlayer.level();
                 // 加入世界实体列表
                 level.addNewPlayer(serverPlayer);
+                // 把假人的 FakeConnection 挂接到当前区域数据的 connections，供 Folia 区域线程追踪
+                // （对齐 Leaves BotList：addNewPlayer 后显式 add，避免 region split 时连接残留；用 Folia 公开方法）
+                level.getCurrentWorldData().addConnection(serverPlayer);
                 this.worldAdded = true;
                 minecraftServer.getCustomBossEvents().onPlayerConnect(serverPlayer);
                 // 初始化背包界面
@@ -415,10 +415,6 @@ public class Bot implements BotHandle {
         } else {
             serverPlayer.doTick();
         }
-        // 手动递减无敌时间：ServerPlayer.tick() 中的玩家专属递减（--invulnerableTime）由实体
-        // tick 系统调用，但假人不走该链路（仅走 doTick() -> Player.tick() -> baseTick()，而
-        // baseTick() 明确跳过 ServerPlayer）。若不递减，invulnerableTime 恒为 20，导致
-        // hurtServer() 进入递增伤害分支：近战二次攻击无效、火焰/弹射物/摔落伤害全被免疫。
         if (serverPlayer.invulnerableTime > 0) {
             serverPlayer.invulnerableTime--;
         }
@@ -700,7 +696,6 @@ public class Bot implements BotHandle {
         return actions.addAction(ChatAction.say(content, feedbackSourceOf(feedbackTo)));
     }
 
-    /** 把 Bukkit CommandSender 包成 NMS CommandSource：命令反馈（sendSuccess/sendFailure）转发给发送者。 */
     @Nullable
     private CommandSource feedbackSourceOf(@Nullable CommandSender feedbackTo) {
         if (feedbackTo == null) {
@@ -787,6 +782,7 @@ public class Bot implements BotHandle {
             return;
         }
         this.serverPlayer.disconnect();
+        level.getCurrentWorldData().removeConnection(serverPlayer);
         net.kyori.adventure.text.Component quitMessage;
         if (this.serverPlayer.isRemoved()) {
             // 已经下线
