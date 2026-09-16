@@ -39,6 +39,25 @@ public final class AuthMeCompat {
     private AuthMeCompat() {
     }
 
+    public static synchronized void reset() {
+        getInstanceMethod = null;
+        isRegisteredMethod = null;
+        forceLoginMethod = null;
+        forceRegisterMethod = null;
+        playerCacheField = null;
+        playerCacheIsAuthenticated = null;
+        playerCacheUpdatePlayer = null;
+        playerAuthBuilder = null;
+        playerAuthBuilderName = null;
+        playerAuthBuilderRealName = null;
+        playerAuthBuilderBuild = null;
+        loginEventConstructor = null;
+        available = false;
+        enabled = false;
+        autoRegister = false;
+        password = null;
+    }
+
 
     public static void init(TianBotPlugin plugin) {
         enabled = plugin.getConfig().getBoolean("authme.enabled", true);

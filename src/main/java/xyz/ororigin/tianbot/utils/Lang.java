@@ -28,6 +28,11 @@ public final class Lang {
         messages = loadFromDisk(new File(plugin.getDataFolder(), FILE_NAME));
     }
 
+    public static synchronized void reset() {
+        defaults = null;
+        messages = null;
+    }
+
     public static String get(String key) {
         String template = resolve(key);
         return template != null ? template : key;

@@ -2,6 +2,7 @@ package xyz.ororigin.tianbot.bot;
 
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -26,11 +27,28 @@ public class BotManager {
         return botMap.values();
     }
 
+
+    public static void saveGhostBots(){
+        for (Bot bot : new ArrayList<>(botMap.values())){
+            if (bot != null){
+                bot.saveGhostDataOnDisable();
+            }
+        }
+    }
+
     public static void shutDown(){
         synchronized (botMap){
-            for (UUID key:botMap.keySet()){
-                botMap.get(key).logout();
+            for (Bot bot : new ArrayList<>(botMap.values())){
+                if (bot != null){
+                    bot.logout();
+                }
             }
+        }
+    }
+
+    public static void reset(){
+        synchronized (botMap){
+            botMap.clear();
         }
     }
 }

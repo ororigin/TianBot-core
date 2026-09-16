@@ -28,6 +28,9 @@ import net.minecraft.server.players.NameAndId;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.stats.ServerStatsCounter;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.LevelData;
@@ -80,6 +83,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 public class Bot implements BotHandle {
     public String botName;
@@ -103,6 +108,16 @@ public class Bot implements BotHandle {
     public long spawnedAtMillis = -1L;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Bot.class);
+    private static final double DEFAULT_MOVEMENT_SPEED =
+            Player.createAttributes().build().getBaseValue(Attributes.MOVEMENT_SPEED);
+    public static final long DEFAULT_AUTO_SAVE_INTERVAL_NANOS = TimeUnit.MINUTES.toNanos(5);
+    private static final long AUTO_SAVE_JITTER_NANOS = TimeUnit.SECONDS.toNanos(30);
+    public static volatile long autoSaveIntervalNanos = DEFAULT_AUTO_SAVE_INTERVAL_NANOS;
+    private volatile long lastSaveNanos = -1L;
+
+    public static void setAutoSaveIntervalSeconds(long seconds) {
+        autoSaveIntervalNanos = seconds <= 0L ? 0L : TimeUnit.SECONDS.toNanos(seconds);
+    }
 
     public Bot(@NotNull BotConfig config) {
         this.botName = config.getBotName();
@@ -221,6 +236,8 @@ public class Bot implements BotHandle {
                 //(paper)新玩家生成原因写入
                 serverPlayer.spawnReason = org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.DEFAULT;
             }
+            //修正坏存档携带的异常移动速度，否则假人移动与横扫判定都会异常
+            sanitizeMovementSpeed(serverPlayer);
             //设置假人位置
             Vec2 spawnAngle=savedPosition.rotation().orElse(new Vec2(0,0));
             serverPlayer.snapTo(savedPosition.position().orElse(new Vec3(0,0,0)),spawnAngle.x,spawnAngle.y);
@@ -239,6 +256,22 @@ public class Bot implements BotHandle {
         return future;
     }
 
+
+    private static void sanitizeMovementSpeed(ServerPlayer player) {
+        AttributeInstance instance = player.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (instance == null) {
+            return;
+        }
+        double current = instance.getBaseValue();
+        if (current > 0.0) {
+            return;
+        }
+        instance.setBaseValue(DEFAULT_MOVEMENT_SPEED);
+        player.getAbilities().setWalkingSpeed((float) DEFAULT_MOVEMENT_SPEED);
+        LOGGER.warn("{}[BOT] invalid walk speed {} found in player data, restored to {}",
+                player.getPlainTextName(), current, DEFAULT_MOVEMENT_SPEED);
+    }
+
     /**阶段3：放置假人至世界**/
     public CompletableFuture<Void> spawn() {
         CompletableFuture<Void> future = new CompletableFuture<>();
@@ -247,6 +280,7 @@ public class Bot implements BotHandle {
                 // 登录状态标记
                 serverPlayer.isRealPlayer = true;
                 serverPlayer.loginTime = System.currentTimeMillis();
+                serverPlayer.lastSave = System.nanoTime();
                 PlayerList playerList = minecraftServer.getPlayerList();
                 // 注册名字uuid对应表
                 this.minecraftServer.services().nameToIdCache().add(nameAndId);
@@ -363,6 +397,12 @@ public class Bot implements BotHandle {
 
     public CompletableFuture<Void> start() {
         CompletableFuture<Void> future = new CompletableFuture<>();
+        if (TianBotPlugin.isShuttingDown() || !TianBotPlugin.isUsable()) {
+            // 插件（或它的静态实例）已不可用：不能再向实体调度器提交任务，否则会抛
+            // IllegalPluginAccessException / NullPointerException（热重载时禁用插件会触发）
+            future.completeExceptionally(new IllegalStateException(Lang.get("error.plugin-unusable")));
+            return future;
+        }
         if (spawnState == BotSpawnState.SPAWNED && serverPlayer != null && !serverPlayer.isRemoved()) {
             try {
                 // 实体调度器：每 tick 在 bot 所在区域线程调用，自动跟随跨区块，实体移除自动 retired
@@ -420,6 +460,74 @@ public class Bot implements BotHandle {
         }
         if (this.chunkLoaderActive && this.spawnChunkPos != null && --this.loaderGraceTicks <= 0) {
             this.removeSpawnChunkTicket();
+        }
+        this.maybeAutoSave();
+    }
+
+    private void maybeAutoSave() {
+        if (this.visible) {
+            // 可见假人交由服务端保存，插件不重复写盘
+            return;
+        }
+        long interval = autoSaveIntervalNanos;
+        if (interval <= 0L) {
+            return;
+        }
+        long now = System.nanoTime();
+        if (this.lastSaveNanos < 0L) {
+            // 首次计时随机推迟一小段，避免同批生成的假人挤在同一个 tick 里集中写盘
+            this.lastSaveNanos = now + ThreadLocalRandom.current().nextLong(Math.min(interval, AUTO_SAVE_JITTER_NANOS));
+            return;
+        }
+        if (now - this.lastSaveNanos < interval) {
+            return;
+        }
+        // 无论成功与否都推进计时：写盘失败由 PlayerDataStorage 自身告警，避免每 tick 重试刷屏
+        this.lastSaveNanos = now;
+        if (this.savePlayerData()) {
+            LOGGER.debug("{}[BOT] auto-saved player data", serverPlayer.getPlainTextName());
+        }
+    }
+
+    public boolean savePlayerData() {
+        ServerPlayer player = this.serverPlayer;
+        if (player == null) {
+            return false;
+        }
+        if (!player.getBukkitEntity().isPersistent()) {
+            return false;
+        }
+        minecraftServer.getPlayerList().playerIo.save(player);
+        ServerStatsCounter stats = player.getStats();
+        if (stats != null) {
+            stats.save();
+        }
+        PlayerAdvancements advancements = player.getAdvancements();
+        if (advancements != null) {
+            advancements.save();
+        }
+        // 与 PlayerList#save 一样推进 lastSave，避免服务端增量保存立刻重复写一次
+        player.lastSave = System.nanoTime();
+        this.lastSaveNanos = player.lastSave;
+        return true;
+    }
+
+    public boolean saveGhostDataOnDisable() {
+        ServerPlayer player = this.serverPlayer;
+        if (this.visible || player == null || !this.isSpawned()) {
+            return false;
+        }
+        try {
+            if (!this.savePlayerData()) {
+                return false;
+            }
+            LOGGER.info("{}[BOT] ghost player data saved on plugin disable", player.getPlainTextName());
+            return true;
+        } catch (Throwable t) {
+            // 卸载路径必须尽力而为：单个假人保存失败不能拖累其它假人
+            LOGGER.warn("{}[BOT] failed to save ghost player data on plugin disable: {}",
+                    player.getPlainTextName(), t.toString());
+            return false;
         }
     }
 
@@ -749,6 +857,7 @@ public class Bot implements BotHandle {
         this.actions.terminate();
         if (this.serverPlayer == null) {
             this.spawnState = BotSpawnState.REMOVED;
+            unregisterFromManager();
             return;
         }
         if (this.spawnState == BotSpawnState.REMOVED) {
@@ -757,6 +866,7 @@ public class Bot implements BotHandle {
         ServerLevel level = this.serverPlayer.level();
         if (level == null) {
             this.spawnState = BotSpawnState.REMOVED;
+            unregisterFromManager();
             return;
         }
         int chunkX = SectionPos.blockToSectionCoord(this.serverPlayer.getBlockX());
@@ -771,6 +881,9 @@ public class Bot implements BotHandle {
         ServerLevel level = this.serverPlayer.level();
         if (level == null || level.getCurrentWorldData() == null) {
             LOGGER.info("{}[BOT] skip logout (server shutting down)", this.serverPlayer.getPlainTextName());
+            if (!this.visible && this.savePlayerData()) {
+                LOGGER.info("{}[BOT] player data saved before shutdown", this.serverPlayer.getPlainTextName());
+            }
             this.spawnState = BotSpawnState.REMOVED;
             return;
         }
@@ -817,17 +930,8 @@ public class Bot implements BotHandle {
         );
         ((CraftServer) Bukkit.getServer()).getPluginManager().callEvent(event);
         this.serverPlayer.getBukkitEntity().disconnect();
-        if (this.serverPlayer.getBukkitEntity().isPersistent()) {
-            playerList.playerIo.save(this.serverPlayer);
-        }
-        ServerStatsCounter stats = this.serverPlayer.getStats();
-        if (stats != null) {
-            stats.save();
-        }
-        PlayerAdvancements advancements = this.serverPlayer.getAdvancements();
-        if (advancements != null) {
-            advancements.save();
-        }
+        // 存档 / 统计 / 进度：与周期自动保存共用同一实现
+        this.savePlayerData();
         // 清 PlayerList 注册表
         playerList.getPlayers().remove(this.serverPlayer);
         playerList.getPlayersByUUID().remove(this.serverPlayer.getUUID());
@@ -953,6 +1057,11 @@ public class Bot implements BotHandle {
         this.worldAdded = false;
         this.spawnState = BotSpawnState.REMOVED;
         this.removeSpawnChunkTicket();
+        unregisterFromManager();
+    }
+
+    private void unregisterFromManager() {
+        BotManager.botMap.remove(getUUID(botName));
         if (this.serverPlayer != null) {
             BotManager.botMap.remove(this.serverPlayer.getUUID());
         }

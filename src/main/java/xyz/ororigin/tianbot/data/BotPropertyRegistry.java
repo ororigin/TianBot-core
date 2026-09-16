@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class BotPropertyRegistry {
 
-    private static final BotPropertyRegistry INSTANCE = new BotPropertyRegistry();
+    private static volatile BotPropertyRegistry INSTANCE = new BotPropertyRegistry();
 
 
     private static final Set<String> RESERVED_KEYS = Set.of("uuid", "bot_name", "name");
@@ -25,6 +25,10 @@ public final class BotPropertyRegistry {
 
     public static BotPropertyRegistry getInstance() {
         return INSTANCE;
+    }
+
+    public static synchronized void reset() {
+        INSTANCE = new BotPropertyRegistry();
     }
 
 

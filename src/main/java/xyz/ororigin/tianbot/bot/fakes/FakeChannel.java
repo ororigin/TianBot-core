@@ -18,8 +18,29 @@ import java.net.SocketAddress;
 
 public class FakeChannel extends AbstractChannel {
 
-    /** 所有假人共用一个独立事件循环（静态，避免每假人一个线程） */
-    private static final EventLoop EVENT_LOOP = new DefaultEventLoop();
+    private static EventLoop sharedEventLoop;
+
+    private static synchronized EventLoop sharedEventLoop() {
+        EventLoop loop = sharedEventLoop;
+        if (loop == null || loop.isShuttingDown()) {
+            loop = new DefaultEventLoop();
+            sharedEventLoop = loop;
+        }
+        return loop;
+    }
+
+    public static synchronized void shutdownEventLoop() {
+        EventLoop loop = sharedEventLoop;
+        sharedEventLoop = null;
+        if (loop == null) {
+            return;
+        }
+        try {
+            loop.shutdownGracefully(0, 1, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Throwable ignored) {
+            // 关闭失败不影响卸载流程
+        }
+    }
     private final ChannelConfig config = new DefaultChannelConfig(this);
     private final ChannelPipeline pipeline = new FakeChannelPipeline(this);
     private final InetAddress address;
@@ -53,7 +74,6 @@ public class FakeChannel extends AbstractChannel {
 
     @Override
     protected void doWrite(ChannelOutboundBuffer in) throws Exception {
-        // 假连接没有对端，写出的数据直接丢弃
         for (; ; ) {
             Object msg = in.current();
             if (msg == null) {
@@ -110,6 +130,6 @@ public class FakeChannel extends AbstractChannel {
 
     @Override
     public EventLoop eventLoop() {
-        return EVENT_LOOP;
+        return sharedEventLoop();
     }
 }

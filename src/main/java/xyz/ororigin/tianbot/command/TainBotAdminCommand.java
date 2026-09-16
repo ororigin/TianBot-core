@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
@@ -38,11 +39,14 @@ import static xyz.ororigin.tianbot.command.CommandSupport.suggestBots;
 
 public final class TainBotAdminCommand {
 
+    /** 命令根标签，用于注册与卸载。 */
+    public static final String ROOT_LABEL = "player";
+
     private TainBotAdminCommand() {
     }
 
-    public static void register(Commands commands) {
-        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("tianbotadmin")
+    public static LiteralCommandNode<CommandSourceStack> build() {
+        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal(ROOT_LABEL)
                 .requires(source -> source.getSender().hasPermission("tianbot.admin"))
                 .then(Commands.literal("botlist")
                         .executes(TainBotAdminCommand::botList)
@@ -79,7 +83,7 @@ public final class TainBotAdminCommand {
                         .then(Commands.literal("script")
                                 .then(Commands.argument("script", StringArgumentType.greedyString())
                                         .executes(TainBotAdminCommand::script))));
-        commands.register(root.build(), Lang.get("command.description"), List.of());
+        return root.build();
     }
 
     private static int ghostMode(CommandContext<CommandSourceStack> context) {

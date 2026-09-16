@@ -3,6 +3,8 @@
 # 假人名称前缀
 bot:
   name-prefix: "[假人]"
+  #定期假人数据保存间隔
+  auto-save-interval-seconds: 300
 
 database:
   # SQLite 数据库文件名

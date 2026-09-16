@@ -16,6 +16,9 @@
 - **SQLite 持久化**：假人属性数据库（WAL），数据库不可用不阻断插件运行
 - **假人名称前缀**：假人显示名带可配置前缀（默认 `[假人]`），便于与真人区分
 - **防踢出**：出生保护期内或命中指定原因自动忽略踢出请求，兼容无法识别假通道的库（如 PacketEvents）
+- **ghost 自动存档**：不可见假人按周期自动写盘（默认 5 分钟，可配），插件卸载与服务器关闭前也会尽力保存
+- **坏档自愈**：生成时修正存档中异常的移动速度，避免假人移动与横扫判定失灵
+- **热重载安全**：卸载时复位全部静态状态并注销命令，不给下一个 ClassLoader 留旧句柄
 - **Folia 区域线程安全**：所有操作均调度到假人所在区域/实体线程执行
 - **本地化消息**：基于 `messages.yml` 的中文反馈体系，可热编辑
 
@@ -34,7 +37,7 @@
 
 ```bash
 gradlew.bat build        # 编译并打包
-gradlew.bat shadowJar    # 打包运行时依赖（sqlite-jdbc）→ build/libs/TianBot-core-26.2-RC-1.0-all.jar
+gradlew.bat shadowJar    # 打包运行时依赖（sqlite-jdbc）→ build/libs/TianBot-core-26.2-release-1.0-all.jar
 gradlew.bat deploy       # shadowJar 后复制到测试服 plugins 目录
 ```
 
@@ -43,18 +46,21 @@ gradlew.bat deploy       # shadowJar 后复制到测试服 plugins 目录
 
 ## 使用命令
 
-所有命令以 `/tianbotadmin <假人> ...` 开头，需要权限 `tianbot.admin`（默认 OP）。
+所有命令以 `/player <假人> ...` 开头，需要权限 `tianbot.admin`（默认 OP）。
 `<假人>` 参数支持按名字补全（仅在线假人）。
+
+> 根命令标签即 `player`（`TainBotAdminCommand.ROOT_LABEL`），注册时无别名；
+> 若与其他插件的 `/player` 冲突，后注册的一方会失败并在控制台输出告警。
 
 ### 生命周期
 
 | 命令 | 说明 |
 |------|------|
-| `/tianbotadmin <假人> spawn` | 以默认配置生成假人（可见） |
-| `/tianbotadmin <假人> ghostmode true\|false` | 运行时切换可见 / 隐藏 |
-| `/tianbotadmin <假人> stop` | 终止该假人的所有行为（清空队列） |
-| `/tianbotadmin <假人> kill` | 下线假人（触发 PlayerQuitEvent、存档、广播离开） |
-| `/tianbotadmin botlist [ghost\|visible]` | 列出所有在线假人（含世界/坐标/在线时长；可按可见性过滤） |
+| `/player <假人> spawn` | 以默认配置生成假人（可见） |
+| `/player <假人> ghostmode true\|false` | 运行时切换可见 / 隐藏 |
+| `/player <假人> stop` | 终止该假人的所有行为（清空队列） |
+| `/player <假人> kill` | 下线假人（触发 PlayerQuitEvent、存档、广播离开） |
+| `/player botlist [ghost\|visible]` | 列出所有在线假人（含世界/坐标/在线时长；可按可见性过滤） |
 
 ### 动作
 
@@ -66,20 +72,20 @@ gradlew.bat deploy       # shadowJar 后复制到测试服 plugins 目录
 
 | 命令 | 说明 |
 |------|------|
-| `/tianbotadmin <假人> mount [anything]` | 骑最近的矿车/船/马；`anything` 骑任意实体 |
-| `/tianbotadmin <假人> dismount` | 下马 |
-| `/tianbotadmin <假人> sneak` / `unsneak` | 潜行 / 取消潜行 |
-| `/tianbotadmin <假人> sprint` / `unsprint` | 疾跑 / 取消疾跑 |
-| `/tianbotadmin <假人> look north\|south\|east\|west\|up\|down` | 朝向固定方向 |
-| `/tianbotadmin <假人> look at <位置>` | 看向指定坐标 |
-| `/tianbotadmin <假人> look <yaw> <pitch>` | 设置绝对朝向 |
-| `/tianbotadmin <假人> turn left\|right\|back\|<旋转>` | 相对旋转 |
-| `/tianbotadmin <假人> move [forward\|backward\|left\|right]` | 持续移动；无参数为停止移动 |
-| `/tianbotadmin <假人> chat <内容>` | 让假人聊天：`/` 开头当命令执行，否则全局广播 |
+| `/player <假人> mount [anything]` | 骑最近的矿车/船/马；`anything` 骑任意实体 |
+| `/player <假人> dismount` | 下马 |
+| `/player <假人> sneak` / `unsneak` | 潜行 / 取消潜行 |
+| `/player <假人> sprint` / `unsprint` | 疾跑 / 取消疾跑 |
+| `/player <假人> look north\|south\|east\|west\|up\|down` | 朝向固定方向 |
+| `/player <假人> look at <位置>` | 看向指定坐标 |
+| `/player <假人> look <yaw> <pitch>` | 设置绝对朝向 |
+| `/player <假人> turn left\|right\|back\|<旋转>` | 相对旋转 |
+| `/player <假人> move [forward\|backward\|left\|right]` | 持续移动；无参数为停止移动 |
+| `/player <假人> chat <内容>` | 让假人聊天：`/` 开头当命令执行，否则全局广播 |
 
 ## Script 模式
 
-`/tianbotadmin <假人> script <JSON>` 可为假人运行一段 JSON 动作脚本（可循环重放）。
+`/player <假人> script <JSON>` 可为假人运行一段 JSON 动作脚本（可循环重放）。
 JSON 非法时回显解析失败；`stop` 可随时停止。
 
 ```json
@@ -216,6 +222,9 @@ public void onBotQuit(BotQuitEvent event) {
 ```yaml
 bot:
   name-prefix: "[假人]"       # 假人显示名前缀
+  # ghost（不可见）假人的定期存档间隔，单位秒；<= 0 表示关闭
+  # 可见假人由服务端自行保存，不受此项影响
+  auto-save-interval-seconds: 300
 
 database:
   file: bots.db              # SQLite 数据库文件名（plugins/Tianbot-core/ 下）
@@ -245,6 +254,14 @@ prevent-kicking:
 - 单线程 executor `TianBot-Sqlite` 异步写入
 - 数据库初始化失败时插件继续运行，属性读写降级（读返回空、写抛异常）
 
+## 假人存档
+
+- **可见假人**：由服务端常规玩家存档流程负责，插件不重复写盘
+- **ghost 假人**：按 `bot.auto-save-interval-seconds` 周期写盘（默认 5 分钟，带随机抖动避免同批集中写盘）、
+  插件 `onDisable` 时逐个尽力保存、服务端关闭前保存一次
+- 存档内容包含玩家数据、统计与进度；写盘失败仅告警，不会中断 tick
+- 生成时若发现存档中的移动速度异常（`<= 0`），会恢复为默认值并输出告警
+
 ## 项目结构
 
 ```
@@ -255,12 +272,12 @@ src/main/java/xyz/ororigin/tianbot/
 ├── service/                  # 服务层实现（TianBotServiceImpl / BotPropertyServiceImpl）
 ├── bot/                      # 假人核心：Bot / BotManager / BotConfig / BotNamePrefix / GhostInfoListener
 │   ├── fakes/                # 伪造连接栈：FakeConnection / FakeChannel / FakeChannelPipeline ...
-│   └── action/               # 动作框架：Action / PersistentAction / ToggleAction / ActionHandler
+│   └── action/               # 动作框架：Action / PersistentAction / ToggleAction / StopCurrentAction / ActionHandler
 │       ├── module/           # 具体动作：Attack / Use / Jump / Drop / Move / Look / Mount ...
-│       └── script/           # Script 解析：ScriptParser / ScriptDefinition
-├── command/                  # Paper Brigadier 命令：TainBotAdminCommand / BotNameArgumentType / CommandSupport
+│       └── script/           # Script 解析：ScriptParser / ScriptDefinition / ScriptParseException
+├── command/                  # Paper Brigadier 命令：TainBotAdminCommand / BotNameArgumentType / CommandRegistration / CommandSupport
 ├── data/                     # 数据层：DatabaseManager / SqliteBotDatabase / BotPropertyRegistry ...
-└── utils/                    # Lang（本地化）/ AuthMeCompat / ThreadUtils
+└── utils/                    # Lang（本地化）/ AuthMeCompat / PreventKickingCompat / CommandCompletionUtils / ThreadUtils
 ```
 
 ## 开源协议
