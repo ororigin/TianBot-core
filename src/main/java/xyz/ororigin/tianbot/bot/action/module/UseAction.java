@@ -8,6 +8,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -130,7 +131,8 @@ public class UseAction extends PersistentAction {
                     InteractionResult result = player.gameMode.useItemOn(
                             player, player.level(), player.getItemInHand(hand), hand, blockHit);
                     if (result instanceof InteractionResult.Success) {
-                        player.swing(hand);
+                        // 26.3：swing(InteractionHand, SwingAnimation, boolean)
+                        player.swing(hand, SwingAnimation.DEFAULT, true);
                         itemUseCooldown = 3;
                         return true;
                     }

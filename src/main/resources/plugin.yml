@@ -1,7 +1,7 @@
 name: Tianbot-core
 version: '${version}'
 main: xyz.ororigin.tianbot.TianBotPlugin
-api-version: '26.2'
+api-version: '26.3'
 folia-supported: true
 load: STARTUP
 author: OR_origin

@@ -7,6 +7,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -123,8 +124,13 @@ public class AttackAction extends PersistentAction {
                     if (!TickThread.isTickThreadFor(target)) {
                         return false;
                     }
+                    if(player.getAbilities().getWalkingSpeed()==0){
+                        player.getAbilities().setWalkingSpeed(1);
+                    }
                     player.attack(target);
-                    player.swing(InteractionHand.MAIN_HAND);
+                    // 26.3：swing 改为 swing(InteractionHand, SwingAnimation, boolean)
+                    // sendToSwingingEntity=true 与原单参 swing 的行为一致（同步给自己）
+                    player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
                 }
                 player.resetAttackStrengthTicker();
                 player.resetLastActionTime();
@@ -178,7 +184,7 @@ public class AttackAction extends PersistentAction {
                     player.level().destroyBlockProgress(-1, pos, (int) (curBlockDamageMP * 10));
                 }
                 player.resetLastActionTime();
-                player.swing(InteractionHand.MAIN_HAND);
+                player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
                 return blockBroken;
             }
             default:

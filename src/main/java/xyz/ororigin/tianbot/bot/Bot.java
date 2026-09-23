@@ -455,8 +455,9 @@ public class Bot implements BotHandle {
         } else {
             serverPlayer.doTick();
         }
-        if (serverPlayer.invulnerableTime > 0) {
-            serverPlayer.invulnerableTime--;
+        // 26.3：Entity.invulnerableTime 改为 private，必须走 getter/setter
+        if (serverPlayer.getInvulnerableTime() > 0) {
+            serverPlayer.setInvulnerableTime(serverPlayer.getInvulnerableTime() - 1);
         }
         if (this.chunkLoaderActive && this.spawnChunkPos != null && --this.loaderGraceTicks <= 0) {
             this.removeSpawnChunkTicket();

@@ -1,7 +1,7 @@
 > 本文档是咱偷懒完全由AI写的，有疏漏请见谅（
 # TianBot-core
 
-针对 **Folia 26.2** 的假人（Fake Player）插件 —— Carpet 假人功能在 Folia 服务端上的插件移植。
+针对 **Lophine 26.3** 的假人（Fake Player）插件 —— Carpet 假人功能在 Folia 服务端上的插件移植。
 
 在 Folia 的线程化区域体系下，通过伪造网络连接直接构造 `ServerPlayer` 生成假人，提供完整的
 动作指令、JSON 动作脚本、自定义属性持久化与第三方插件 API。
@@ -26,22 +26,26 @@
 
 | 项目 | 版本 |
 |------|------|
-| 服务端 | Folia 26.2（`26.2.build.4-beta`，运行时即 Mojang 映射，无需 reobf） |
+| 服务端 | Lophine 26.3（`26.3.local-SNAPSHOT`，运行时即 Mojang 映射，无需 reobf） |
 | Java | 25（编译 toolchain；Gradle 9.4.1 wrapper 自带） |
 | Gradle | 9.4.1（wrapper 自带） |
 
-> 插件在非 Folia 服务端上会自动禁用（启动时检测
+> 插件在非 Folia 系（含 Lophine）服务端上会自动禁用（启动时检测
 > `io.papermc.paper.threadedregions.RegionizedServerInitEvent`）。
+>
+> 编译依赖 `fun.bm.lophine:lophine-api` 与 `dev-bundle`，两者需先从本地 Lophine
+> `dev/26.3` 源码 `publishToMavenLocal` 发布（Lophine 官方仓库未发布 26.3）。
+> 同时需要 `fun.bm.comfreyweight.userdev` 插件，亦需自行从 ComfreyWeight 源码发布。
 
 ## 构建与部署
 
 ```bash
 gradlew.bat build        # 编译并打包
-gradlew.bat shadowJar    # 打包运行时依赖（sqlite-jdbc）→ build/libs/TianBot-core-26.2-release-1.0-all.jar
+gradlew.bat shadowJar    # 打包运行时依赖（sqlite-jdbc）→ build/libs/TianBot-core-26.3-release-1.0-all.jar
 gradlew.bat deploy       # shadowJar 后复制到测试服 plugins 目录
 ```
 
-`deploy` 目标目录默认 `D:/minecraft/server/26.2/plugins`，可在
+`deploy` 目标目录默认 `D:/minecraft/server/26.3/plugins`，可在
 `gradle.properties` 的 `foliaBotTestServerPlugins` 覆盖。
 
 ## 使用命令
