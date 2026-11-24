@@ -12,7 +12,7 @@ group = "com.tianbot"
 version = "26.3-release-1.0"
 
 repositories {
-    // Lophine 本地发布的 lophine-api / dev-bundle（26.3.local-SNAPSHOT）
+    // Lophine 本地发布的 lophine-api / dev-bundle（26.3-R0.1-SNAPSHOT）
     mavenLocal()
     // mache 相关的 userdev 依赖（io.papermc:mache、io.papermc.unpick-definitions、
     // io.papermc.codebook 等）只存在于 PaperMC 仓库。dev-bundle 的 mache.json 虽
@@ -39,13 +39,13 @@ dependencies {
     // 为什么不用 paperweight.foliaDevBundle(...)：Lophine 是 fork，其 api-version、
     // packet 注册表与 RegionizedWorldData 等均可能与上游 Folia 不同步；且上游
     // dev.folia 目前根本没有 26.3（最新仅 26.2.build.7-beta）。
-    paperweight.devBundle("fun.bm.lophine", "26.3.local-SNAPSHOT")
+    paperweight.devBundle("fun.bm.lophine", "26.3-R0.1-SNAPSHOT")
 
     // Lophine 26.3 API（含 io.papermc.paper.threadedregions.scheduler.*、
     // io.papermc.paper.command.brigadier.*、org.leavesmc.leaves.* 等）。
     // lophine-api 通过 capability 别名同时充当 org.bukkit:bukkit /
     // io.papermc.paper:paper-mojangapi / org.spigotmc:spigot-api，故无需再声明 folia-api。
-    compileOnly("fun.bm.lophine:lophine-api:26.3.local-SNAPSHOT")
+    compileOnly("fun.bm.lophine:lophine-api:26.3-R0.1-SNAPSHOT")
 
     // SQLite JDBC 驱动（假人属性持久化，运行时被打包进 jar）
     implementation("org.xerial:sqlite-jdbc:3.53.2.1")

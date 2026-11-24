@@ -12,11 +12,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import org.w3c.dom.Attr;
 import xyz.ororigin.tianbot.bot.action.ActionResource;
 import xyz.ororigin.tianbot.bot.action.FinishReason;
 import xyz.ororigin.tianbot.bot.action.PersistentAction;
 import xyz.ororigin.tianbot.bot.action.util.BotTracer;
-
 import java.util.Set;
 
 public class AttackAction extends PersistentAction {
@@ -124,12 +126,12 @@ public class AttackAction extends PersistentAction {
                     if (!TickThread.isTickThreadFor(target)) {
                         return false;
                     }
-                    if(player.getAbilities().getWalkingSpeed()==0){
-                        player.getAbilities().setWalkingSpeed(1);
+                    AttributeInstance movementSpeedAttribute=player.getAttribute(Attributes.MOVEMENT_SPEED);
+                    if(movementSpeedAttribute!=null&&(movementSpeedAttribute.getBaseValue()<=0.0F||movementSpeedAttribute.getValue()<=0.0F)){
+                        movementSpeedAttribute.setBaseValue(0.1F);
+                        player.getAbilities().setWalkingSpeed(0.1F);
                     }
                     player.attack(target);
-                    // 26.3：swing 改为 swing(InteractionHand, SwingAnimation, boolean)
-                    // sendToSwingingEntity=true 与原单参 swing 的行为一致（同步给自己）
                     player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
                 }
                 player.resetAttackStrengthTicker();

@@ -95,6 +95,10 @@ public class FakeConnection extends Connection {
     }
 
     @Override
+    public void flushChannel() {
+    }
+
+    @Override
     public <T extends PacketListener> void setupInboundProtocol(ProtocolInfo<T> protocol, T packetListener) {
     }
 

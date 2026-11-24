@@ -896,7 +896,7 @@ public class Bot implements BotHandle {
             return;
         }
         this.serverPlayer.disconnect();
-        level.getCurrentWorldData().removeConnection(serverPlayer);
+        removeConnectionSafely(level);
         net.kyori.adventure.text.Component quitMessage;
         if (this.serverPlayer.isRemoved()) {
             // 已经下线
@@ -917,6 +917,17 @@ public class Bot implements BotHandle {
         this.cleanupAfterRemoval();
     }
 
+    private void removeConnectionSafely(ServerLevel level) {
+        try {
+            level.getCurrentWorldData().removeConnection(this.serverPlayer);
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            LOGGER.warn("{}[BOT] connection flush rejected during logout, ignored: {}",
+                    this.serverPlayer.getPlainTextName(), e.getMessage());
+        } catch (Throwable t) {
+            LOGGER.warn("{}[BOT] unexpected error while removing connection, ignored",
+                    this.serverPlayer.getPlainTextName(), t);
+        }
+    }
 
     private net.kyori.adventure.text.Component softQuit(PlayerList playerList, net.kyori.adventure.text.Component leaveMessage) {
         if (leaveMessage == null) {

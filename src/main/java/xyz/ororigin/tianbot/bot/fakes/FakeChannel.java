@@ -14,33 +14,81 @@ import io.netty.channel.EventLoop;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.concurrent.TimeUnit;
 
 
 public class FakeChannel extends AbstractChannel {
 
     private static EventLoop sharedEventLoop;
 
-    private static synchronized EventLoop sharedEventLoop() {
-        EventLoop loop = sharedEventLoop;
-        if (loop == null || loop.isShuttingDown()) {
-            loop = new DefaultEventLoop();
-            sharedEventLoop = loop;
+    private static int activeUsers;
+
+    private static long releaseTicket;
+
+    private static EventLoop sharedEventLoop() {
+        synchronized (FakeChannel.class) {
+            // 已进入 shutting down 的循环不可复用（可能是关闭竞态，也可能是被误关）
+            if (sharedEventLoop == null || sharedEventLoop.isShuttingDown()) {
+                sharedEventLoop = new DefaultEventLoop();
+                activeUsers = 0;
+            }
+            activeUsers++;
+            releaseTicket++;
+            return sharedEventLoop;
         }
-        return loop;
     }
 
-    public static synchronized void shutdownEventLoop() {
-        EventLoop loop = sharedEventLoop;
-        sharedEventLoop = null;
-        if (loop == null) {
-            return;
-        }
-        try {
-            loop.shutdownGracefully(0, 1, java.util.concurrent.TimeUnit.SECONDS);
-        } catch (Throwable ignored) {
-            // 关闭失败不影响卸载流程
+    public static void releaseEventLoop() {
+        synchronized (FakeChannel.class) {
+            if (activeUsers > 0) {
+                activeUsers--;
+            }
+            if (activeUsers > 0) {
+                return;
+            }
+            final long ticket = ++releaseTicket;
+            final EventLoop loop = sharedEventLoop;
+            if (loop == null) {
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(1000L);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                synchronized (FakeChannel.class) {
+                    if (ticket != releaseTicket || activeUsers > 0 || sharedEventLoop != loop) {
+                        return;
+                    }
+                    sharedEventLoop = null;
+                }
+                try {
+                    loop.shutdownGracefully(0L, 1L, TimeUnit.SECONDS);
+                } catch (Throwable ignored) {
+                    // 关闭失败不影响后续流程
+                }
+            }, "TianBot-EventLoop-Reaper").start();
         }
     }
+    public static void shutdownEventLoop() {
+        synchronized (FakeChannel.class) {
+            if (activeUsers > 0) {
+                return;
+            }
+        }
+        releaseEventLoop();
+    }
+
+    public static synchronized EventLoop currentEventLoop() {
+        return sharedEventLoop;
+    }
+
+    public static synchronized int activeUsers() {
+        return activeUsers;
+    }
+
     private final ChannelConfig config = new DefaultChannelConfig(this);
     private final ChannelPipeline pipeline = new FakeChannelPipeline(this);
     private final InetAddress address;
@@ -62,10 +110,6 @@ public class FakeChannel extends AbstractChannel {
 
     @Override
     protected void doBind(SocketAddress localAddress) throws Exception {
-    }
-
-    @Override
-    protected void doClose() throws Exception {
     }
 
     @Override
@@ -131,5 +175,10 @@ public class FakeChannel extends AbstractChannel {
     @Override
     public EventLoop eventLoop() {
         return sharedEventLoop();
+    }
+
+    @Override
+    protected void doClose() throws Exception {
+        releaseEventLoop();
     }
 }

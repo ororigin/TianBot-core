@@ -26,7 +26,7 @@
 
 | 项目 | 版本 |
 |------|------|
-| 服务端 | Lophine 26.3（`26.3.local-SNAPSHOT`，运行时即 Mojang 映射，无需 reobf） |
+| 服务端 | Lophine 26.3（`26.3-R0.1-SNAPSHOT`，运行时即 Mojang 映射，无需 reobf） |
 | Java | 25（编译 toolchain；Gradle 9.4.1 wrapper 自带） |
 | Gradle | 9.4.1（wrapper 自带） |
 
