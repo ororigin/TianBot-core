@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.tianbot"
-version = "26.3-release-1.0"
+version = "26.3-release-1.1"
 
 repositories {
     // Lophine 本地发布的 lophine-api / dev-bundle（26.3-R0.1-SNAPSHOT）
